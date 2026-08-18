@@ -1,0 +1,987 @@
+-- ============================================================
+-- A0
+-- ============================================================
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+VALUES
+    ('Базовая структура предложения', NULL, 1),
+    ('To be', NULL, 1),
+    ('Местоимения', NULL, 1),
+    ('Базовые глаголы', NULL, 1);
+
+
+-- A0 TOPICS
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'I am / You are / He is',
+       id,
+       1
+FROM grammar_topics
+WHERE name = 'To be'
+  AND level_id = 1;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'I / you / he / she / it / we / they',
+       id,
+       1
+FROM grammar_topics
+WHERE name = 'Местоимения'
+  AND level_id = 1;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'have / has',
+       id,
+       1
+FROM grammar_topics
+WHERE name = 'Базовая структура предложения'
+  AND level_id = 1;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'this / that',
+       id,
+       1
+FROM grammar_topics
+WHERE name = 'Базовая структура предложения'
+  AND level_id = 1;
+
+
+-- ============================================================
+-- A1
+-- ============================================================
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+VALUES
+    ('Базовое предложение', NULL, 2),
+    ('Present', NULL, 2),
+    ('Past', NULL, 2),
+    ('Questions & Negatives', NULL, 2),
+    ('Nouns & Articles', NULL, 2),
+    ('Modals', NULL, 2);
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'to be',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Базовое предложение'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'have got',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Базовое предложение'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'there is / there are',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Базовое предложение'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'this / that / these / those',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Базовое предложение'
+  AND level_id = 2;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Present Simple',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Present'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Present Continuous',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Present'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Present Simple vs Present Continuous',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Present'
+  AND level_id = 2;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'was / were',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Past'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Past Simple',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Past'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Regular / irregular verbs',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Past'
+  AND level_id = 2;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Questions with do / does',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Questions & Negatives'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Negatives',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Questions & Negatives'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Question words',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Questions & Negatives'
+  AND level_id = 2;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Singular / plural',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Nouns & Articles'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'a / an',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Nouns & Articles'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'the',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Nouns & Articles'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'some / any',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Nouns & Articles'
+  AND level_id = 2;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'can / can''t',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Modals'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'must / mustn''t',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Modals'
+  AND level_id = 2;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'have to',
+       id,
+       2
+FROM grammar_topics
+WHERE name = 'Modals'
+  AND level_id = 2;
+
+
+-- ============================================================
+-- A2
+-- ============================================================
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+VALUES
+    ('Present & Past', NULL, 3),
+    ('Future', NULL, 3),
+    ('Perfect Tenses', NULL, 3),
+    ('Modals', NULL, 3),
+    ('Comparisons', NULL, 3),
+    ('Articles & Quantifiers', NULL, 3),
+    ('Gerund & Infinitive', NULL, 3);
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Present Perfect',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Perfect Tenses'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Present Perfect vs Past Simple',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Perfect Tenses'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Past Continuous',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Present & Past'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Past Simple vs Past Continuous',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Present & Past'
+  AND level_id = 3;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'will',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Future'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'be going to',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Future'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Present Continuous for future',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Future'
+  AND level_id = 3;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'should',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Modals'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'could',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Modals'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'may / might',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Modals'
+  AND level_id = 3;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Comparative adjectives',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Comparisons'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Superlative adjectives',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Comparisons'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'as ... as',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Comparisons'
+  AND level_id = 3;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'much / many / a lot of',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Articles & Quantifiers'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'few / little',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Articles & Quantifiers'
+  AND level_id = 3;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'want / need + infinitive',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Gerund & Infinitive'
+  AND level_id = 3;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'like / love / hate + -ing',
+       id,
+       3
+FROM grammar_topics
+WHERE name = 'Gerund & Infinitive'
+  AND level_id = 3;
+
+
+-- ============================================================
+-- B1
+-- ============================================================
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+VALUES
+    ('Tenses', NULL, 4),
+    ('Perfect & Continuous', NULL, 4),
+    ('Conditionals', NULL, 4),
+    ('Passive Voice', NULL, 4),
+    ('Reported Speech', NULL, 4),
+    ('Modal Verbs', NULL, 4),
+    ('Gerund & Infinitive', NULL, 4),
+    ('Relative Clauses', NULL, 4);
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Present Perfect Continuous',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Perfect & Continuous'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Past Perfect',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Perfect & Continuous'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Past Perfect Continuous',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Perfect & Continuous'
+  AND level_id = 4;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Zero Conditional',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Conditionals'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'First Conditional',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Conditionals'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Second Conditional',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Conditionals'
+  AND level_id = 4;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Passive Present',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Passive Voice'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Passive Past',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Passive Voice'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Passive with modals',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Passive Voice'
+  AND level_id = 4;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Statements in reported speech',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Reported Speech'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Questions in reported speech',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Reported Speech'
+  AND level_id = 4;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'must / have to / should',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Modal Verbs'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'may / might',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Modal Verbs'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'modal perfect',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Modal Verbs'
+  AND level_id = 4;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Verb + gerund',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Gerund & Infinitive'
+  AND level_id = 4;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Verb + infinitive',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Gerund & Infinitive'
+  AND level_id = 4;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Defining relative clauses',
+       id,
+       4
+FROM grammar_topics
+WHERE name = 'Relative Clauses'
+  AND level_id = 4;
+
+
+-- ============================================================
+-- B2
+-- ============================================================
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+VALUES
+    ('Advanced Tenses', NULL, 5),
+    ('Conditionals', NULL, 5),
+    ('Passive Voice', NULL, 5),
+    ('Reported Speech', NULL, 5),
+    ('Modal Verbs', NULL, 5),
+    ('Relative Clauses', NULL, 5),
+    ('Gerund & Infinitive', NULL, 5),
+    ('Complex Sentences', NULL, 5);
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Future Perfect',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Advanced Tenses'
+  AND level_id = 5;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Future Continuous',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Advanced Tenses'
+  AND level_id = 5;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Future Perfect Continuous',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Advanced Tenses'
+  AND level_id = 5;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Third Conditional',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Conditionals'
+  AND level_id = 5;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Mixed Conditionals',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Conditionals'
+  AND level_id = 5;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Advanced Passive',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Passive Voice'
+  AND level_id = 5;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Causative have / get',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Passive Voice'
+  AND level_id = 5;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Reported questions',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Reported Speech'
+  AND level_id = 5;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Reporting verbs',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Reported Speech'
+  AND level_id = 5;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'must have / might have / should have',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Modal Verbs'
+  AND level_id = 5;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Non-defining relative clauses',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Relative Clauses'
+  AND level_id = 5;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Reduced relative clauses',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Relative Clauses'
+  AND level_id = 5;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Advanced gerunds',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Gerund & Infinitive'
+  AND level_id = 5;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Perfect infinitive',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Gerund & Infinitive'
+  AND level_id = 5;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Participle clauses',
+       id,
+       5
+FROM grammar_topics
+WHERE name = 'Complex Sentences'
+  AND level_id = 5;
+
+
+-- ============================================================
+-- C1
+-- ============================================================
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+VALUES
+    ('Advanced Tenses & Aspect', NULL, 6),
+    ('Advanced Conditionals', NULL, 6),
+    ('Advanced Passive', NULL, 6),
+    ('Inversion', NULL, 6),
+    ('Advanced Modals', NULL, 6),
+    ('Complex Clauses', NULL, 6),
+    ('Emphasis & Focus', NULL, 6),
+    ('Advanced Verb Patterns', NULL, 6);
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Future in the past',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Tenses & Aspect'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Narrative tenses',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Tenses & Aspect'
+  AND level_id = 6;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Mixed conditionals',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Conditionals'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Inverted conditionals',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Conditionals'
+  AND level_id = 6;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Passive reporting structures',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Passive'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Get-passive',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Passive'
+  AND level_id = 6;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Negative inversion',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Inversion'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Only after / only when',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Inversion'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Not only ... but also',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Inversion'
+  AND level_id = 6;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Modal perfect nuances',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Modals'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Probability and deduction',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Advanced Modals'
+  AND level_id = 6;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Concessive clauses',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Complex Clauses'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Advanced relative clauses',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Complex Clauses'
+  AND level_id = 6;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Cleft sentences',
+       id,
+       6
+FROM grammar_topics
+WHERE name = 'Emphasis & Focus'
+  AND level_id = 6;
+
+
+-- ============================================================
+-- C2
+-- ============================================================
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+VALUES
+    ('Advanced Syntax', NULL, 7),
+    ('Inversion & Fronting', NULL, 7),
+    ('Conditionals & Hypotheticals', NULL, 7),
+    ('Advanced Modality', NULL, 7),
+    ('Discourse & Information Structure', NULL, 7),
+    ('Complex Verb Patterns', NULL, 7),
+    ('Ellipsis & Substitution', NULL, 7),
+    ('Register & Precision', NULL, 7);
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Complex clause structures',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Advanced Syntax'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Subordination',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Advanced Syntax'
+  AND level_id = 7;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Negative inversion',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Inversion & Fronting'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Fronting',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Inversion & Fronting'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Detached structures',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Inversion & Fronting'
+  AND level_id = 7;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Mixed conditionals',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Conditionals & Hypotheticals'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Unreal past',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Conditionals & Hypotheticals'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Hypothetical inversion',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Conditionals & Hypotheticals'
+  AND level_id = 7;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Degrees of certainty',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Advanced Modality'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Epistemic modality',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Advanced Modality'
+  AND level_id = 7;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Topic-comment structure',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Discourse & Information Structure'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Information focus',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Discourse & Information Structure'
+  AND level_id = 7;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Complex verb complementation',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Complex Verb Patterns'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Verb patterns with infinitive / gerund',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Complex Verb Patterns'
+  AND level_id = 7;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Nominal ellipsis',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Ellipsis & Substitution'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Substitution',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Ellipsis & Substitution'
+  AND level_id = 7;
+
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Formal vs informal grammar',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Register & Precision'
+  AND level_id = 7;
+
+INSERT INTO grammar_topics (name, parent_id, level_id)
+SELECT 'Naturalness and collocation',
+       id,
+       7
+FROM grammar_topics
+WHERE name = 'Register & Precision'
+  AND level_id = 7;
