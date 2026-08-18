@@ -32,14 +32,16 @@ logging.basicConfig(level=logging.INFO)
 
 
 async def mainLocal() -> None:
-    session = AiohttpSession(proxy="socks5://127.0.0.1:3067")
+    #Раскомментировать
+    #session = AiohttpSession(proxy="socks5://127.0.0.1:3067")
     create_tables()
 
 
     bot = Bot(
         token=TOKEN,
-        default=DefaultBotProperties(parse_mode = ParseMode.HTML) , 
-        session=session       
+        default=DefaultBotProperties(parse_mode = ParseMode.HTML)  
+        #Раскомментировать
+        #session=session       
     )
 
     dp = Dispatcher(storage=MemoryStorage())
