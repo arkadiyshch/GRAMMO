@@ -89,7 +89,9 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+
     ENV = os.getenv("ENV")
+    print(ENV)
     if ENV == "local":
         asyncio.run(mainLocal())
     else:   
