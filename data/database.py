@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 
-DB_NAME = "GRAMMO.db"
+DB_NAME = "data/GRAMMO.db"
 
 
 
@@ -85,15 +85,26 @@ def create_tables():
     # ============================================================
 
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS sentences (
+       CREATE TABLE IF NOT EXISTS sentences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sentence TEXT NOT NULL,
-            level INTEGER NOT NULL,
-            topic_id INTEGER NOT NULL,
+            level_id INTEGER NOT NULL,
+            grammar_topic_id INTEGER,
+            lexical_topic_id INTEGER,
+            difficulty_id INTEGER NOT NULL,
             type INTEGER NOT NULL DEFAULT 0,
 
-            FOREIGN KEY (topic_id)
-                REFERENCES grammar_topics(id)
+            FOREIGN KEY (level_id)
+                REFERENCES levels(id),
+
+            FOREIGN KEY (grammar_topic_id)
+                REFERENCES grammar_topics(id),
+
+            FOREIGN KEY (lexical_topic_id)
+                REFERENCES lexical_topics(id),
+
+            FOREIGN KEY (difficulty_id)
+                REFERENCES difficultу(id)
         )
     """)
 
@@ -162,6 +173,64 @@ def create_tables():
                 REFERENCES sentences(id)
         )
             
+        """)
+
+    # ============================================================
+    #lexical_topics
+    # Лексические темы
+    # ============================================================
+    cursor.execute("""
+       CREATE TABLE  IF NOT EXISTS lexical_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            parent_id INTEGER,
+            level_from INTEGER NOT NULL,
+            subscription_id INTEGER NOT NULL DEFAULT 1,
+
+            FOREIGN KEY (parent_id) REFERENCES lexical_topics(id),
+            FOREIGN KEY (level_from) REFERENCES levels(id),
+            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
+        )
+        """)
+
+    # ============================================================
+    #Сложности 
+    #
+    # ============================================================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS difficulty (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT
+        )
+    """)
+    
+    # ============================================================
+    #Сложности по пользователям
+    #
+    # ============================================================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_difficulty (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    difficulty_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (difficulty_id) REFERENCES difficulty(id)
+        )
+    """)
+
+    # ============================================================
+        #Виды подписок
+        #
+        # ============================================================
+    cursor.execute("""
+           CREATE TABLE  IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            audience TEXT NOT NULL CHECK (audience IN ('student', 'teacher'))
+        )
         """)
 
     # ============================================================
@@ -411,41 +480,105 @@ def seed_grammar_topics():
 
     print("Грамматические темы добавлены.")
 
-#Получаем список тем
-def get_groups(level_id: int):
+
+
+#Получаем список грамматических тем
+def get_grammar_topics(parent_id:int | None, level_id: int):
     conn = get_connection()
     cursor = conn.cursor()
 
-    query = """
-        SELECT id, name
-        FROM grammar_topics
-        WHERE parent_id IS NULL and level_id = ?
-    """
-    params = (level_id, )  
-    cursor.execute(query, params)
-    groups = cursor.fetchall()
-    conn.close()
+    print(parent_id)
+    if parent_id is None:
+        query = """
+                SELECT id, name
+                FROM grammar_topics
+                WHERE parent_id is NULL and level_id = ?
+                """
+        params = (level_id,) 
+        cursor.execute(query, params)
+    else:    
+        query = """
+            SELECT id, name
+            FROM grammar_topics
+            WHERE parent_id = ? and level_id = ?
+        """
+        params = (parent_id, level_id,)   
+        cursor.execute(query, params)
 
-    return groups
-
-
-#Получаем список тем
-def get_topics(parent_id, level_id: int):
-    conn = get_connection()
-    cursor = conn.cursor()
-  
-    query = """
-        SELECT id, name
-        FROM grammar_topics
-        WHERE parent_id = ? and level_id = ?
-    """
-    params = (parent_id, level_id,)  
-    cursor.execute(query, params)
+    print(query)
     topics = cursor.fetchall()
+    print(topics)
+    conn.close()
+    return topics
+
+
+
+#Получаем список лексических тем
+def get_lexical_topics(parent_id:int | None, level_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    print(parent_id)
+    if parent_id is None or parent_id==0:
+        query = """
+                SELECT id, name
+                FROM lexical_topics
+                WHERE parent_id is NULL and level_from <= ?
+                """
+        params = (level_id,) 
+        cursor.execute(query, params)
+    else:    
+        query = """
+            SELECT id, name
+            FROM lexical_topics
+            WHERE parent_id = ? and level_from <= ?
+        """
+        params = (parent_id, level_id,)   
+        cursor.execute(query, params)
+
+    print(query)
+    topics = cursor.fetchall()
+    print(topics)
     conn.close()
     return topics
 
 #Получаем список тем
+def get_parent_grammar_topic_id(topic_id: int):
+    print(f"topic_id запрос к бд:{topic_id}")
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+    SELECT parent_id
+    FROM grammar_topics
+    WHERE id = ?
+    """
+    params = (topic_id,)  
+    cursor.execute(query, params)
+    topics = cursor.fetchall()[0][0]
+    conn.close()
+    return topics
+
+#Получаем список тем
+def get_parent_lexical_topic_id(topic_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+    SELECT parent_id
+    FROM lexical_topics
+    WHERE id = ?
+    """
+    params = (topic_id,)  
+    cursor.execute(query, params)
+    topics = cursor.fetchall()[0][0]
+    conn.close()
+    return topics
+
+
+
+
+
 def get_topics_count(parent_id, level_id: int) -> int:
     conn = get_connection()
     cursor = conn.cursor()
@@ -463,6 +596,8 @@ def get_topics_count(parent_id, level_id: int) -> int:
 
     conn.close()
     return topics_count
+
+
 
 
 def get_unused_sentence(
@@ -509,11 +644,12 @@ def get_unused_sentence(
     conn.close()
 
     return result
-
-def add_sentence_0(
+def save_sentence(
     sentence: str,
-    level: int,
-    topic_id: int,
+    level_id: int,
+    grammar_topic_id: int | None,
+    lexical_topic_id: int | None,
+    difficulty_id: int,
     sentence_type: int = 0
 ):
     conn = get_connection()
@@ -522,15 +658,19 @@ def add_sentence_0(
     cursor.execute("""
         INSERT INTO sentences (
             sentence,
-            level,
-            topic_id,
+            level_id,
+            grammar_topic_id,
+            lexical_topic_id,
+            difficulty_id,
             type
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
     """, (
         sentence,
-        level,
-        topic_id,
+        level_id,
+        grammar_topic_id,
+        lexical_topic_id,
+        difficulty_id,
         sentence_type
     ))
 
@@ -540,27 +680,6 @@ def add_sentence_0(
     conn.close()
 
     return sentence_id
-
-def mark_sentence_as_used(
-    user_id: int,
-    sentence_id: int
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT OR IGNORE INTO user_question_history (
-            user_id,
-            sentence_id
-        )
-        VALUES (?, ?)
-    """, (
-        user_id,
-        sentence_id
-    ))
-
-    conn.commit()
-    conn.close()
 
 
 def get_blitz_sentence(
@@ -752,6 +871,27 @@ def get_current_user_level(user_id: int) -> int | None:
 
     return int(result[0])
 
+def get_current_user_level_id(user_id: int) -> int | None:
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT user_level
+        FROM user_levels
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    """, (user_id,))
+
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result is None:
+        return None
+
+    return int(result[0])
+
 
 def save_user_level(
     user_id: int,
@@ -782,7 +922,7 @@ def save_user_level(
     conn.close()
 
 
-def get_level_name(level):
+def get_level_name(level_id):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -791,13 +931,13 @@ def get_level_name(level):
         FROM levels
         WHERE id = ?          
     """
-    params = (level,)
+    params = (level_id,)
     cursor.execute(query, params)
     result = cursor.fetchone()
     conn.close()
     return result[0]
 
-def get_group_name(group):
+def get_grammar_group_name(group_id):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -806,28 +946,172 @@ def get_group_name(group):
         FROM grammar_topics
         WHERE id = ?       
     """
-    params = (group,)
+    params = (group_id,)
     cursor.execute(query, params)
     result = cursor.fetchone()
     conn.close()
     return result[0]
 
-def get_topic_name(topic,):
+def get_grammar_topic_name(topic_id):
+    if topic_id is None:
+        return "Любая грамматическая тема текущего уровня"
+    else:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT name
+            FROM grammar_topics
+            WHERE id = ?       
+        """
+        
+        params = (topic_id,)
+        cursor.execute(query, params)
+        result = cursor.fetchone()
+        print(result)
+        conn.close()
+        return result[0]
+
+def get_lexical_topic_name(topic_id):
+    if topic_id is None:
+        return "Любая тема "
+    else:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT name
+            FROM lexical_topics
+            WHERE id = ?       
+        """
+        
+        params = (topic_id,)
+        cursor.execute(query, params)
+        result = cursor.fetchone()
+        conn.close()
+        return result[0]
+
+def get_lexical_group_name(group_id):
     conn = get_connection()
     cursor = conn.cursor()
 
     query = """
         SELECT name
-        FROM grammar_topics
+        FROM lexical_topics
+        WHERE id = ?       
+    """
+    params = (group_id,)
+    cursor.execute(query, params)
+    result = cursor.fetchone()
+    conn.close()
+    return result[0]
+
+def get_lexical_topic_name(topic_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT name
+        FROM lexical_topics
         WHERE id = ?       
     """
     
-    params = (topic,)
+    params = (topic_id,)
     cursor.execute(query, params)
     result = cursor.fetchone()
     print(result)
     conn.close()
     return result[0]
+
+def get_difficulty_id_by_user_id(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT difficulty_id
+        FROM user_difficulty
+        WHERE user_id = ?       
+    """
+    params = (user_id, )
+    cursor.execute(query, params )
+    result = cursor.fetchone()
+
+    difficulty=0
+    if result is None:
+        base_difficulty = 2
+        save_user_difficulty(user_id, base_difficulty)
+        difficulty = base_difficulty
+    else:
+
+        difficulty = result[0]
+
+    
+    
+    conn.close()
+
+ 
+    return difficulty
+
+
+def get_last_difficulty_id_by_user_id(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    print(f"User_id: {user_id}")
+    query = """
+        SELECT difficulty_id
+        FROM user_difficulty
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    """
+    params = (user_id, )
+    cursor.execute(query, params)
+    result = cursor.fetchone()
+    difficulty_id = result[0]
+    
+    conn.close()
+
+ 
+    return difficulty_id
+
+
+def get_difficulty_name_by_id(difficulty_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = """
+        SELECT name
+        FROM difficulty
+        WHERE id = ?        
+    """
+    params = (difficulty_id, )
+    cursor.execute(query, params)
+    result = cursor.fetchone()
+    difficulty_name = result[0]
+    
+    conn.close()
+
+ 
+    return difficulty_name
+
+
+def save_user_difficulty(user_id: int, difficulty_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    print(f"difficulty_id {difficulty_id}")
+
+    query = """
+        INSERT INTO user_difficulty (
+            user_id,
+            difficulty_id,
+            created_at
+        )
+        VALUES (?, ?, ?)
+    """
+    params = (user_id, difficulty_id,  datetime.now(), )
+    cursor.execute(query, params )
+    
+    conn.commit()
+    conn.close()
 
 
 def save_user_answer(
@@ -863,6 +1147,9 @@ def save_user_answer(
     conn.close()
 
 def get_last_user_sentences(
+
+
+        
     user_id: int,
     limit: int = 10
 ):
@@ -886,3 +1173,20 @@ def get_last_user_sentences(
     conn.close()
 
     return [row[0] for row in result]
+
+
+#Получаем список тем
+def get_difficulties():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+  
+    query = """
+        SELECT id, name
+        FROM difficulty
+        """
+    cursor.execute(query)
+   
+    difficulties = cursor.fetchall()
+    conn.close()
+    return difficulties

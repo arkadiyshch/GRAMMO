@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from dataBase.database import create_tables
+from data.database import create_tables
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -16,9 +16,9 @@ import os
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp_socks import ProxyConnector
 
-from handlers import routes
+from handlers import routes, menu, training
 
-from dataBase.database import create_tables
+from data.database import create_tables
 
 
 load_dotenv()
@@ -33,21 +33,23 @@ logging.basicConfig(level=logging.INFO)
 
 async def mainLocal() -> None:
     #Раскомментировать
-    #session = AiohttpSession(proxy="socks5://127.0.0.1:3067")
+    session = AiohttpSession(proxy="socks5://127.0.0.1:3067")
     create_tables()
 
 
     bot = Bot(
         token=TOKEN,
-        default=DefaultBotProperties(parse_mode = ParseMode.HTML)  
+        default=DefaultBotProperties(parse_mode = ParseMode.HTML),  
         #Раскомментировать
-        #session=session       
+        session=session       
     )
 
     dp = Dispatcher(storage=MemoryStorage())
     dp.message.middleware(RateLimitMiddleware())
     #dp.message.middleware(AdminOnlyMiddleware())
     dp.include_router(routes.router)
+    dp.include_router(menu.router)
+    dp.include_router(training.router)
     
     await bot.set_my_commands([])
     try:
@@ -73,6 +75,7 @@ async def main() -> None:
     dp.message.middleware(RateLimitMiddleware())
     #dp.message.middleware(AdminOnlyMiddleware())
     dp.include_router(routes.router)
+    dp.include_router(menu.router)
     
     await bot.set_my_commands([])
     try:

@@ -10,22 +10,21 @@ import prompts
 from prompts import get_check_prompt
 import json
 import re
+import data.database as db
 
-from dataBase.database import (
-    get_sentence_from_DB,
-    add_sentence, 
-    get_group_name,
-    get_topic_name, 
-    get_level_name,
-    get_last_user_sentences
-)
 
 load_dotenv()
 
 openAI_api_key = os.getenv("OPENAI_API_KEY")
 ODIROUTER_api_key = os.getenv("ODIROUTER_API_KEY")
 BASE_URL = "https://api.odirouter.ai/v1"
-MODEL = "gpt-5.6-sol"#"gpt-5.6-luna" #free-gpt-5.6-terra"
+#MODEL = "gemini-3.7-flash"
+MODEL ="gpt-5.4-mini"
+#MODEL="gpt-5.6-terra"
+#MODEL="gpt-5.6-sol"
+#MODEL="gpt-5.6-luna"
+#MODEL="free-gpt-5.6-terra"
+
 
 
 from memory import get_user_messages, add_user_message
@@ -241,6 +240,25 @@ async def generate_sentence(level: str, difficulty: int, group: str, topic:str, 
     return sentence
 
 
+async def generate_sentences(prompt: str):
+
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        max_tokens=10000
+        #reasoning_effort="low"
+    )
+
+    sentences = response.choices[0].message.content.strip()
+    return sentences
+
+
+
 async def get_sentence(
     user_id: int,
     level_id: int,
@@ -252,7 +270,7 @@ async def get_sentence(
    
 
     # 1. Сначала пытаемся найти готовое предложение в БД
-    sentence = get_sentence_from_DB(
+    sentence = db.get_sentence_from_DB(
         user_id=user_id,
         level_id=level_id,
         topic_id=topic_id
@@ -266,15 +284,15 @@ async def get_sentence(
         }
 
     # 2. Если подходящего предложения нет — генерируем новое
-    previous_sentences = get_last_user_sentences(
+    previous_sentences = db.get_last_user_sentences(
             user_id=user_id,
             limit=10
         )
     generated_sentence = await generate_sentence(
-        level=get_level_name(level_id),
+        level=db.get_level_name(level_id),
         difficulty=difficulty,
-        group =get_group_name(group_id),
-        topic=get_topic_name(topic_id),        
+        group =db.get_group_name(group_id),
+        topic=db.get_topic_name(topic_id),        
         previous_sentences=previous_sentences
     )
 
@@ -329,6 +347,85 @@ async def check_answer(
 
     return result
 
+
+async def analyze_training(analysis_data: list) -> dict:
+
+    if not analysis_data:
+        return {
+            "overall_score": 0,
+            "summary": "В этой тренировке пока нет проверенных ответов.",
+            "strengths": [],
+            "weaknesses": [],
+            "what_to_review": [],
+            "what_to_practice": [],
+            "mastered": [],
+            "final_recommendation": ""
+        }
+
+    analysis_json = json.dumps(
+        analysis_data,
+        ensure_ascii=False,
+        indent=2
+    )
+
+    prompt = prompts.get_training_analysis_prompt(
+        analysis_data=analysis_json
+    )
+
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Ты опытный преподаватель английского языка "
+                    "и методист. Анализируй результаты обучения "
+                    "объективно и не придумывай ошибки."
+                )
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.2
+    )
+
+    result = response.choices[0].message.content.strip()
+
+    result = re.sub(
+        r"^```json\s*",
+        "",
+        result,
+        flags=re.IGNORECASE
+    )
+
+    result = re.sub(
+        r"\s*```$",
+        "",
+        result
+    )
+
+    try:
+        return json.loads(result)
+
+    except json.JSONDecodeError:
+        print("Ошибка обработки анализа тренировки:")
+        print(result)
+
+        return {
+            "overall_score": 0,
+            "summary": "Не удалось автоматически проанализировать тренировку.",
+            "strengths": [],
+            "weaknesses": [],
+            "what_to_review": [],
+            "what_to_practice": [],
+            "mastered": [],
+            "final_recommendation": ""
+        }
+
+
+
 def format_check_result(result: dict) -> str:
 
     text = "<b>Оценка</b>\n\n"
@@ -377,14 +474,33 @@ def format_check_result(result: dict) -> str:
             f"{error['correct']}\n"
         )
 
-    text += "\n"
+    # Правильный вариант
+    correct_answer = result.get("correct_answer", "")
+
+    if correct_answer:
+        text += (
+            "\n<b>Правильный вариант:</b>\n"
+            f"{correct_answer}\n"
+        )
 
     text += (
-        f"<b>Итог: "
+        "\n<b>Итог: "
         f"{result['total_score']}/10</b>"
     )
 
     return text
+
+
+async def get_difficlty_id(user_id, state):
+    data = await state.get_data()
+    difficulty_id = data.get("difficulty")
+    
+    if difficulty_id is None: 
+        difficulty_id = db.get_last_difficulty_id_by_user_id(user_id)
+
+    return difficulty_id
+
+    
 
 if __name__ == "__main__":
     asyncio.run(main())

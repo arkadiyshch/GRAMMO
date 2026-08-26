@@ -1,12 +1,28 @@
-import dataBase.database as db
+import data.database as db
+
+
+
 def get_welcome_message():
-    res = """Привет! Я GRAMO.\nЗакрываю пробелы грамматике короткими тренировками: \n\n ПРЕДЛОЖЕНИЕ -->> ТВОЙ ПЕРЕВОД -->> ПРОВЕРКА \n\n"""
+    res = """Привет! Я GRAMMO.\nДавай я покажу, как тут все устроено.\nКакой у вас примерный уровень английского?"""
     return res
 
 def get_start_bliz_message(goup_id: int, topic_id: int):
     group_name = db.get_group_name(goup_id)
     topic_name = db.get_topic_name(topic_id)
-    res= f"Тренируем тему:\n\n{group_name}\n{topic_name}\n\nПереведи одно за другим следущие 10 предложений на английский язык. \nЕсли сложно - можно пропустить."
+    res= f"Тренируем :\n{group_name}: {topic_name}\n\nПереведи 10 предложений на англиский язык."
     
+    return res
+
+
+def get_onboard_mes():
+    res = """Беслплатно можно тренироваться каждый день 
+    Лимит: 3 предложения в день.
+
+    С подпиской за 350 руб./мес вы получите:
+     - тренирвки без ограничений
+     - выбор грамматических тем
+     - выбор лексических тем
+     - выбор сложности
+     - больше заданий для полноценной тренировки"""
     return res
 

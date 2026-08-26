@@ -1,8 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from dataBase.database import (   
-    get_level_name
-)
+import data.database as db
 
 def diagnostic_level_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -38,9 +36,6 @@ def blitz_groups_keyboard(groups):
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-
-
-
 def blitz_specific_topics_keyboard(topics):
     buttons = []
 
@@ -59,28 +54,29 @@ def blitz_specific_topics_keyboard(topics):
 
 ############################3
 
-#Приветственная клавиатура
+#Welcome клавиатура
 def welcome_keyboard():
     
     buttons = [
-        [InlineKeyboardButton(text="Да", callback_data="start_blitz")]
+        [InlineKeyboardButton(text="Да", callback_data="welcom_change_level")]
     ]
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 #Клавиатура главного меню
-def main_menu_keyboard(level=None):
+def main_menu_keyboard(level):
+
     chengeLevelButtonText = ""        
     if level is None:
         chengeLevelButtonText="Выберите уровень"
     else:
-        chengeLevelButtonText=f"Уровень: {get_level_name(level)}"    
+        chengeLevelButtonText=f"Уровень: {db.get_level_name(level)}"    
 
     
     buttons = [
-        [InlineKeyboardButton(text="Да, начинаем", callback_data="start_blitz")],
-        [InlineKeyboardButton(text=chengeLevelButtonText, callback_data="change_level")]
-       # [InlineKeyboardButton(text="Правила грамматики", callback_data="1")],
+        [InlineKeyboardButton(text="Тренировка", callback_data="main_training")],
+        [InlineKeyboardButton(text=chengeLevelButtonText, callback_data="main_change_level")],
+        [InlineKeyboardButton(text="Подписка: Free", callback_data="1")],
        # [InlineKeyboardButton(text="Политики", callback_data="12")],
        # [InlineKeyboardButton(text="Мои подписки", callback_data="ф1")]
     ]
@@ -91,93 +87,138 @@ def user_level_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="A1", callback_data="level_2"), 
-                InlineKeyboardButton(text="A2", callback_data="level_3")
+                InlineKeyboardButton(text="A1", callback_data="level_id_2"), 
+                InlineKeyboardButton(text="A2", callback_data="level_id_3")
             ],
             [
-                InlineKeyboardButton(text="B1",callback_data="level_4"),
-                InlineKeyboardButton(text="B2",callback_data="level_5")
+                InlineKeyboardButton(text="B1",callback_data="level_id_4"),
+                InlineKeyboardButton(text="B2",callback_data="level_id_5")
             ],
             [
-                InlineKeyboardButton(text="C1",callback_data="level_6"),
-                InlineKeyboardButton(text="C2",callback_data="level_7")
+                InlineKeyboardButton(text="C1",callback_data="level_id_6"),
+                InlineKeyboardButton(text="C2",callback_data="level_id_7")
             ]
         ]
     )
 
 
 #Выбор группы
-def blitz_groups_keyboard(groups):
+def blitz_groups_keyboard(groups, welcome_mode):
 
     # Первая кнопка — отдельной строкой
-    buttons = [
-        [
-            InlineKeyboardButton(
-                text="Что угодно",
-                callback_data="blitz_group_0"
-            )
-        ]
-    ]
+    buttons = [[InlineKeyboardButton(text="Что угодно", callback_data="grammar_group_id_0")]]
 
     # Кнопки групп
     group_buttons = []
 
     for group_id, group_name in groups:
-        group_buttons.append(
-            InlineKeyboardButton(
-                text=group_name,
-                callback_data=f"blitz_group_{group_id}"
-            )
-        )
+        group_buttons.append(InlineKeyboardButton(text=group_name, callback_data=f"grammar_group_id_{group_id}")        )
 
-    # По 3 кнопки в ряд
-    n = 2
-
+    n = 2 # Кнопок в ряд
     for i in range(0, len(group_buttons), n):
         buttons.append(group_buttons[i:i + n])
 
     # Кнопка "Назад" отдельной строкой
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                text="Назад",
-                callback_data="back"
-            )
-        ]
-    )
+    if not welcome_mode:
+        buttons.append([InlineKeyboardButton(text="Назад",callback_data="grammar_group_-1")])
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=buttons
-    )
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-#Выбор подтемы
-def blitz_topics_keyboard(topics):
+
+#Выбор Меню тренироки 
+def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, user_id: int ):
+
+    difficylty_id = db.get_last_difficulty_id_by_user_id(user_id)
+    difficultyu_name = db.get_difficulty_name_by_id(difficylty_id)
+
+    grammar_topic_name = ""
+    if grammar_topic_id is None:
+        grammar_topic_name = "Любая"
+    else:
+        if grammar_topic_id ==0 :
+                grammar_topic_name = "Любая"
+        else:
+            grammar_topic_name = db.get_grammar_topic_name(grammar_topic_id)        
+    #print(f"grammar_topic_id: {grammar_topic_id}")
+
+    print(f"lexical_topic_id:{lexical_topic_id}")
+    lexical_topic_name = ""
+    if lexical_topic_id is None:
+        lexical_topic_name = "Любая"
+    else:
+        if lexical_topic_id ==0 :
+                lexical_topic_name = "Любая"
+        else:
+            lexical_topic_name = db.get_lexical_topic_name(lexical_topic_id)        
+    #print(f"grammar_topic_id: {grammar_topic_id}")
+    
+    buttons = [
+        [InlineKeyboardButton(text="-->> НАЧАТЬ ТРЕНИРОВКУ <<-- ", callback_data="training_start")],
+        [InlineKeyboardButton(text=f"Грамматика: {grammar_topic_name}", callback_data="training_grammar_topic")],
+        [InlineKeyboardButton(text=f"Лексика: {lexical_topic_name}", callback_data="training_lexical_topic")],
+        [InlineKeyboardButton(text=f"Сложность: {difficultyu_name}", callback_data="training_difficulty")],
+        [InlineKeyboardButton(text="Назад", callback_data="training_back_to_main_menu")]      
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+#Выбор грамматической темы
+def grammar_topics_keyboard(grammar_topics, show_back_button: bool):
     # Первая кнопка — отдельной строкой
-        buttons = [
-            [
-                InlineKeyboardButton(text="Любую", callback_data="blitz_topic_0")
-            ]
-        ]
-    
-        # Кнопки групп
-        group_buttons = []
-    
-        for topic_id, topic_name in topics:
-            group_buttons.append(InlineKeyboardButton(text=topic_name, callback_data=f"blitz_topic_{topic_id}"))
+    buttons = [[InlineKeyboardButton(text="Любую", callback_data="grammar_topic_0")]]
+
+    # Кнопки групп
+    group_buttons = []
+
+    for topic_id, topic_name in grammar_topics:
+        group_buttons.append(InlineKeyboardButton(text=topic_name, callback_data=f"grammar_topic_id_{topic_id}"))
+
+    # Вывод с группировкой в ряд
+    n = 2 # По n в ряд
+    for i in range(0, len(group_buttons), n):
+        buttons.append(group_buttons[i:i + n])
+
+    if show_back_button: buttons.append([InlineKeyboardButton(text="Назад", callback_data="grammar_topic_id_-1")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+#Выбор лексической темы
+def lexical_topics_keyboard(lexical_topics, show_back_button: bool):
+    # Первая кнопка — отдельной строкой
+    buttons = [[InlineKeyboardButton(text="Любую", callback_data="lexical_topic_id_0")]]
+
+    # Кнопки групп
+    group_buttons = []
+
+    for topic_id, topic_name in lexical_topics:
+        group_buttons.append(InlineKeyboardButton(text=topic_name, callback_data=f"lexical_topic_id_{topic_id}"))
+
+    # Вывод с группировкой в ряд
+    n = 2 # По n в ряд
+    for i in range(0, len(group_buttons), n):
+        buttons.append(group_buttons[i:i + n])
+
+    if show_back_button: buttons.append([InlineKeyboardButton(text="Назад", callback_data="lexical_topic_id_-1")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+#Выбор сложности 
+def difficulty_keyboard(difficulties):
+
+    buttons=[]
+    for difficulty_id, difficulty_name in difficulties:
+        buttons.append(InlineKeyboardButton(text=difficulty_name, callback_data=f"difficulty_id_{difficulty_id}"))
     
         # Вывод с группировкой в ряд
-        n = 2
-        for i in range(0, len(group_buttons), n):
-            buttons.append(group_buttons[i:i + n])
+    n = 1 # По n в ряд
+    group_buttons = []
+    for i in range(0, len(buttons), n):
+        group_buttons.append(buttons[i:i + n])
 
-        
-        buttons.append(
-            [
-                InlineKeyboardButton(text="Назад", callback_data="back")
-            ]
+    group_buttons.append([InlineKeyboardButton(text="Назад", callback_data="difficulty_id_-1")])
 
-        )
-        return InlineKeyboardMarkup(inline_keyboard=buttons)
+    return InlineKeyboardMarkup(inline_keyboard=group_buttons)
+
 
 #Завершить тестирование
 def finish_blitz_keyboard():
@@ -185,5 +226,72 @@ def finish_blitz_keyboard():
         inline_keyboard=[
             [InlineKeyboardButton(text="Пропустить", callback_data="skip_question")],
             [InlineKeyboardButton(text="Завершить тестирование", callback_data="finish_blitz")]
+        ]
+    )
+
+
+#Клавиатура, которая выводится пользователю вместе с предложением
+def sentence_answer_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Завершить", callback_data="finish_training"),
+                InlineKeyboardButton(text="Пропустить", callback_data="next_sentence"),
+                InlineKeyboardButton(text="Подсказки", callback_data="answer_tips")
+            ]
+        ]
+    )
+
+#Клавиатура, которая выводится пользователю вместе с анаизом ошибок конкретного предложения
+def next_sentence_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Завершить", callback_data="finish_training"),
+                InlineKeyboardButton(text="Следующий вопрос", callback_data="next_sentence")                
+            ]
+        ]
+    )
+
+#Клавиатура, которая выводится пользователю вместе с анаизом ошибок конкретного предложения
+def yes_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Да, начинаем", callback_data="yes_start")                
+            ]
+        ]
+    )
+
+#Клавиатура, которая выводится пользователю вместе с анаизом ошибок конкретного предложения
+def yes2_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Да, мне все понравилось", callback_data="yes2")                
+            ]
+        ]
+    )
+
+
+#Клавиатура, которая выводится пользователю вместе с предложением
+def finish_training_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Главное меню", callback_data="training_main_menu")                
+            ]
+        ]
+    )
+
+#Клавиатура, которая выводится пользователю вместе с предложением
+def onboard_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            
+                [InlineKeyboardButton(text="Продолжить бесплатно", callback_data="onboard_free")],
+                [InlineKeyboardButton(text="Подключить за 350 р.", callback_data="onboard_pay")]
+                               
+            
         ]
     )
