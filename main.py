@@ -76,6 +76,7 @@ async def main() -> None:
     #dp.message.middleware(AdminOnlyMiddleware())
     dp.include_router(routes.router)
     dp.include_router(menu.router)
+    dp.include_router(training.router)
     
     await bot.set_my_commands([])
     try:
@@ -85,7 +86,7 @@ async def main() -> None:
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
     finally:
-        await bot.session.close()        
+        await bot.session.close()       
 
 
 if __name__ == "__main__":
