@@ -18,3 +18,8 @@ async def yookassa_webhook(request: Request):
     print(data)
 
     return {"status": "ok"}
+
+
+@app.get("/")
+async def root():
+    return {"status": "ok"}
