@@ -232,7 +232,7 @@ def create_tables():
         """)
 
     cursor.execute("""
-            CREATE IF NOT EXISTS TABLE payments (
+            CREATE TABLE IF NOT EXISTS  payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
             user_id INTEGER NOT NULL,
