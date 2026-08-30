@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Request
 
-app = FastAPI()
-from fastapi import FastAPI, Request
+print("WEB MODULE LOADED")
 
 app = FastAPI()
+from fastapi import FastAPI, Request
 
 
 @app.get("/")
