@@ -237,7 +237,7 @@ def create_tables():
 
             user_id INTEGER NOT NULL,
             subscription_id INTEGER NOT NULL,
-            yookassa_payment_id TEXT NOT NULL UNIQUE,
+            yookassa_payment_id TEXT NOT NULL UNIQUE, 
 
             amount INTEGER NOT NULL,
             currency TEXT NOT NULL DEFAULT 'RUB',

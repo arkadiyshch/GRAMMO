@@ -16,9 +16,11 @@ import os
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp_socks import ProxyConnector
 
-from handlers import menu, routes_base_function, training 
+from handlers import menu, routes_base_function, training, subscription
 
 from data.database import create_tables
+from web import app
+import uvicorn
 
 
 load_dotenv()
@@ -50,8 +52,14 @@ async def mainLocal() -> None:
     dp.include_router(routes_base_function.router)
     dp.include_router(menu.router)
     dp.include_router(training.router)
+    dp.include_router(subscription.router)
     
     await bot.set_my_commands([])
+
+    web_task = asyncio.create_task(
+        start_web_server()
+    )
+
     try:
         await dp.start_polling(bot)
     except TelegramAPIError as e:
@@ -59,6 +67,7 @@ async def mainLocal() -> None:
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
     finally:
+        web_task.cancel()
         await bot.session.close()
 
 
@@ -77,8 +86,15 @@ async def main() -> None:
     dp.include_router(routes_base_function.router)
     dp.include_router(menu.router)
     dp.include_router(training.router)
+    dp.include_router(subscription.router)
     
     await bot.set_my_commands([])
+
+    web_task = asyncio.create_task(
+        start_web_server()
+    )
+
+
     try:
         await dp.start_polling(bot)
     except TelegramAPIError as e:
@@ -86,7 +102,23 @@ async def main() -> None:
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
     finally:
-        await bot.session.close()       
+        web_task.cancel()
+        await bot.session.close()
+            
+
+
+async def start_web_server():
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8000)),
+        log_level="info"
+    )
+
+    server = uvicorn.Server(config)
+
+    await server.serve()
+
 
 
 if __name__ == "__main__":
