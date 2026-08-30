@@ -255,6 +255,7 @@ async def generate_sentences(prompt: str):
     )
 
     sentences = response.choices[0].message.content.strip()
+    print(sentences)
     return sentences
 
 
@@ -318,6 +319,7 @@ async def check_answer(
     russian_sentence: str,
     user_answer: str
 ):
+    print("Начинаем проверку ии")
     prompt = get_check_prompt(
         russian_sentence=russian_sentence,
         user_answer=user_answer
@@ -339,7 +341,7 @@ async def check_answer(
         ],
         temperature=0.2
     )
-
+    print("Ждем ответ от ИИ")
     result = response.choices[0].message.content
 
     # Преобразуем JSON от ИИ в Python-словарь

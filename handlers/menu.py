@@ -13,6 +13,8 @@ import states as st
 from aiogram.fsm.state import State, StatesGroup
 import handlers.training as tr
 import prompts as p
+import handlers.routes_base_function as rbf
+
 
 router = Router()
 
@@ -24,36 +26,48 @@ async def welcome_handler(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user_name = message.from_user.username
     #level = db.get_current_user_level(user_id)
+    
+    debug_mode = os.getenv("DEBUG_MODE")
+    #if debug_mode: db.delete_user_levels(user_id)
+        
+    
     level_id = db.get_current_user_level_id(user_id)
     await state.update_data(user_id=user_id, level_id = level_id)    
     db.add_user(telegram_id=user_id, username=user_name)    
-        
-        
+    active_messages = []   
+
+    
+
+    cur_mes = message
+    active_messages.append({
+                "message" : cur_mes,
+                "author": "bot",
+                "type": "start"
+            })   
+     
+      
     if level_id is None:
         await state.update_data(welcome_mode = True) 
         await state.set_state(st.MainStates.choosing_level)
-        await message.answer(mes.get_welcome_message(), reply_markup=kb.user_level_keyboard())
-                        
+        cur_mes = await message.answer(mes.get_welcome_message(), reply_markup=kb.user_level_keyboard())
+        active_messages.append({
+            "message" : cur_mes,
+            "author": "bot",
+            "type": "menu"
+        })                
     else:
         await state.update_data(welcome_mode = False) 
         await state.set_state(st.MainStates.main_menu)
-        await message.answer("Главное меню", reply_markup=kb.main_menu_keyboard(level_id))
 
-####################################################
-#Welcome Menu
-####################################################
+        cur_mes = await message.answer("Главное меню", reply_markup=kb.main_menu_keyboard(level_id))
+        active_messages.append({
+                    "message" : cur_mes,
+                    "author": "bot",
+                    "type": "menu"
+                })     
+    await state.update_data(active_messages=active_messages)
+    await rbf.delete_active_messages(state, type = "start")
 
-
-
-
-
-#[Начать - не актуально. Удалить]   
-@router.callback_query(st.MainStates.choosing_level , F.data == "welcom_change_level")
-async def welcome_choosing_level_handler(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()     
-    await state.set_state(st.MainStates.choosing_level)
-    await callback.message.edit_text("Какой у вас уровень?", reply_markup=kb.user_level_keyboard())
-    await state.update_data(next_state = st.MainStates.bliz_prepare) 
 
 ####################################################
 #Main Menu
@@ -82,6 +96,7 @@ async def choosing_level_handler(callback: CallbackQuery, state: FSMContext):
     level_name = db.get_level_name(level_id)
     grammar_topics = db.get_grammar_topics(parent_id=None,  level_id=level_id)
     welcome_mode = data["welcome_mode"] 
+    active_messages = data["active_messages"]
 
     db.save_user_level(user_id=user_id, level_id=level_id)
     await state.update_data(level_id = level_id)
@@ -89,24 +104,21 @@ async def choosing_level_handler(callback: CallbackQuery, state: FSMContext):
     if welcome_mode:
         grammar_topic_id = random.choice(grammar_topics)[0]
         topic_name = db.get_grammar_topic_name(grammar_topic_id)
-        #await callback.message.edit_text(f"Отлично!\n\n Для знакомства с GRAMMO я выберу случайную грамматическую тему по вашему уровню {level_name}: {topic_name}\n\nСейча будет 3 предложения - от простого к более сложному. Переведите их на английский.\n\nПосле каждого ответа я покажу правильный вариант и разберу ошибки.\n\nГотовы?", reply_markup=kb.yes_keyboard())
         await callback.message.edit_text(f"Отлично!\n\nДля знакомства с GRAMMO я выберу случайную грамматическую тему по вашему уровню и сформирую 3 предложения - от простого к сложному.\n\nВам нужно их перевести и прислать ответ. \n\nПосле каждого ответа я покажу правильный вариант и разберу ошибки.\n\nГотовы?", reply_markup=kb.yes_keyboard())
-
-
-        #Сразу уходим в тренировку   
-        #await tr.tarining_start(callback, state)
-
-        #await callback.message.edit_text("Что хочешь потренировать?", reply_markup=kb.grammar_topics_keyboard(topics, True))
-        #await state.set_state(st.MainStates.choosing_grammar_topic)
+        
     else:
         await state.set_state(st.MainStates.main_menu)
+
         await callback.message.edit_text("Начинаем тренировку?", reply_markup=kb.main_menu_keyboard(level_id))
+
+        state.update_data(active_messages=active_messages)
 
 #Выбор конкретного уровня  
 @router.callback_query(st.MainStates.choosing_level, F.data.startswith("yes_start"))
 async def yes_start_welcom_training(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await tr.tarining_start(callback, state)
+
         
 #Выбор грамматического топика. 
 @router.callback_query(st.MainStates.choosing_grammar_topic)
@@ -209,7 +221,7 @@ async def choosing_lexical_topic_handler(callback: CallbackQuery, state: FSMCont
             await main_training(callback, state)
         else:
             recursion_depth-=1
-            parent_lexical_id = db.get_patent_lexical_topic_id(lexical_topic_id)
+            parent_lexical_id = db.get_parent_lexical_topic_id(lexical_topic_id)
 
             if recursion_depth==0:
                 await state.update_data(lexical_topic_id = parent_lexical_id , recursion_depth = None)
@@ -276,6 +288,7 @@ async def main_training(callback: CallbackQuery, state: FSMContext):
     lexical_topic_id = data.get("lexical_topic_id")
     level_id = data.get("level_id")
     user_id = data["user_id"]
+    active_messages = data["active_messages"]
 
     
     difficulty_id = data.get("difficulty_id")

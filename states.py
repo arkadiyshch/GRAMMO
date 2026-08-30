@@ -12,12 +12,14 @@ class MainStates(StatesGroup):
     choosing_grammar_topic = State() # Выбор топика
     choosing_lexical_topic = State() # Выбор топика
     
+    
 
     bliz_prepare = State()
     bliz_ask = State()
     bliz_answer = State()
     bliz_tips = State()
-    
+
+    subscription = State() # Выбор топика
     
 
 

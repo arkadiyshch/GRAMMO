@@ -66,6 +66,8 @@ def welcome_keyboard():
 #Клавиатура главного меню
 def main_menu_keyboard(level):
 
+    
+
     chengeLevelButtonText = ""        
     if level is None:
         chengeLevelButtonText="Выберите уровень"
@@ -263,7 +265,7 @@ def yes_keyboard():
         ]
     )
 
-#Клавиатура, которая выводится пользователю вместе с анаизом ошибок конкретного предложения
+#Клавиатура, которая выводится пользователю вместе с анлаизом ошибок конкретного предложения
 def yes2_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -293,5 +295,39 @@ def onboard_keyboard():
                 [InlineKeyboardButton(text="Подключить за 350 р.", callback_data="onboard_pay")]
                                
             
+        ]
+    )
+
+
+#Клавиатура, которая выводится пользователю вместе с предложением
+def finish_training_keyboard2(button_text):
+    if button_text is None: button_text = "Главное меню"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=button_text, callback_data="training_main_menu")                
+            ]
+        ]
+    )
+
+
+
+#########################################
+#Клавиатуры для подписок
+#########################################
+#Оформить подписку
+def subscription_subscribe_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Оформить за 350 руб.", callback_data="subscribe")],
+            [InlineKeyboardButton(text="Назад", callback_data="back")] 
+        ]
+    )
+
+def subscription_cancel_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Оформить за 350 руб.", callback_data="cancel")],
+            [InlineKeyboardButton(text="Назад", callback_data="back")] 
         ]
     )

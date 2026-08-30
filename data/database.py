@@ -113,18 +113,15 @@ def create_tables():
     # ============================================================
 
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS subscriptions (
+       CREATE TABLE IF NOT EXISTS user_subscriptions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            plan TEXT NOT NULL,
-            started_at TIMESTAMP NOT NULL,
-            expires_at TIMESTAMP NOT NULL,
-            payment_id TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-            FOREIGN KEY (user_id)
-                REFERENCES users(user_id)
-        )
+            subscription_id INTEGER NOT NULL,
+            started_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
+)
     """)
 
    
@@ -184,12 +181,10 @@ def create_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             parent_id INTEGER,
-            level_from INTEGER NOT NULL,
-            subscription_id INTEGER NOT NULL DEFAULT 1,
-
+            level_form INTEGER NOT NULL,
+          
             FOREIGN KEY (parent_id) REFERENCES lexical_topics(id),
-            FOREIGN KEY (level_from) REFERENCES levels(id),
-            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
+            FOREIGN KEY (level_from) REFERENCES levels(id)
         )
         """)
 
@@ -221,17 +216,44 @@ def create_tables():
         )
     """)
 
-    # ============================================================
-        #Виды подписок
+        # ============================================================
+        #Виды Подипсок
         #
         # ============================================================
     cursor.execute("""
-           CREATE TABLE  IF NOT EXISTS subscriptions (
+           CREATE TABLE IF NOT EXISTS subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                price INTEGER NOT NULL DEFAULT 0,
+                period_months INTEGER,
+                daily_limit INTEGER
+            )
+        """)
+
+    cursor.execute("""
+            CREATE IF NOT EXISTS TABLE payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            audience TEXT NOT NULL CHECK (audience IN ('student', 'teacher'))
+
+            user_id INTEGER NOT NULL,
+            subscription_id INTEGER NOT NULL,
+            yookassa_payment_id TEXT NOT NULL UNIQUE,
+
+            amount INTEGER NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'RUB',
+
+            status TEXT NOT NULL,
+
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            paid_at TEXT,
+
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
         )
         """)
+
+
+
 
     # ============================================================
     # СОХРАНЯЕМ
@@ -480,8 +502,6 @@ def seed_grammar_topics():
 
     print("Грамматические темы добавлены.")
 
-
-
 #Получаем список грамматических тем
 def get_grammar_topics(parent_id:int | None, level_id: int):
     conn = get_connection()
@@ -510,8 +530,6 @@ def get_grammar_topics(parent_id:int | None, level_id: int):
     print(topics)
     conn.close()
     return topics
-
-
 
 #Получаем список лексических тем
 def get_lexical_topics(parent_id:int | None, level_id: int):
@@ -575,10 +593,6 @@ def get_parent_lexical_topic_id(topic_id: int):
     conn.close()
     return topics
 
-
-
-
-
 def get_topics_count(parent_id, level_id: int) -> int:
     conn = get_connection()
     cursor = conn.cursor()
@@ -597,10 +611,8 @@ def get_topics_count(parent_id, level_id: int) -> int:
     conn.close()
     return topics_count
 
-
-
-
-def get_unused_sentence(
+#Удалить
+def get_unused_sentence_old(
     user_id: int,
     level: int,
     topic_id: int | None = None
@@ -644,6 +656,7 @@ def get_unused_sentence(
     conn.close()
 
     return result
+
 def save_sentence(
     sentence: str,
     level_id: int,
@@ -711,7 +724,6 @@ def get_grammar_topic(topic_id: int):
 
     return topic
 
-
 def get_random_grammar_topic():
     conn = get_connection()
     cursor = conn.cursor()
@@ -746,7 +758,6 @@ def add_sentence(sentence: str, level_id: int, topic_id: int, type: int = 0):
     conn.close()
 
     return sentence_id
-
 
 def get_sentence_from_DB(
     user_id: int,
@@ -815,9 +826,6 @@ def get_used_sentence_ids(user_id: int):
     conn.close()
 
     return [row[0] for row in result]
-
-
-
  
 def add_sentence(
     sentence: str,
@@ -892,7 +900,6 @@ def get_current_user_level_id(user_id: int) -> int | None:
 
     return int(result[0])
 
-
 def save_user_level(
     user_id: int,
     level_id: int,
@@ -920,7 +927,6 @@ def save_user_level(
 
     conn.commit()
     conn.close()
-
 
 def get_level_name(level_id):
     conn = get_connection()
@@ -1056,7 +1062,7 @@ def get_difficulty_id_by_user_id(user_id):
 def get_last_difficulty_id_by_user_id(user_id: int):
     conn = get_connection()
     cursor = conn.cursor()
-    print(f"User_id: {user_id}")
+
     query = """
         SELECT difficulty_id
         FROM user_difficulty
@@ -1064,14 +1070,29 @@ def get_last_difficulty_id_by_user_id(user_id: int):
         ORDER BY created_at DESC
         LIMIT 1
     """
-    params = (user_id, )
-    cursor.execute(query, params)
+
+    cursor.execute(query, (user_id,))
     result = cursor.fetchone()
-    difficulty_id = result[0]
-    
+
+    if result is None:
+        difficulty_id = 2
+
+        insert_query = """
+            INSERT INTO user_difficulty (user_id, difficulty_id)
+            VALUES (?, ?)
+        """
+
+        cursor.execute(
+            insert_query,
+            (user_id, difficulty_id)
+        )
+
+        conn.commit()
+    else:
+        difficulty_id = result[0]
+
     conn.close()
 
- 
     return difficulty_id
 
 
@@ -1113,8 +1134,8 @@ def save_user_difficulty(user_id: int, difficulty_id: int):
     conn.commit()
     conn.close()
 
-
-def save_user_answer(
+#Удалить
+def save_user_answer_old(
     user_id,
     sentence_id,
     user_answer,
@@ -1146,13 +1167,7 @@ def save_user_answer(
     conn.commit()
     conn.close()
 
-def get_last_user_sentences(
-
-
-        
-    user_id: int,
-    limit: int = 10
-):
+def get_last_user_sentences(user_id: int, limit: int = 10):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -1174,7 +1189,6 @@ def get_last_user_sentences(
 
     return [row[0] for row in result]
 
-
 #Получаем список тем
 def get_difficulties():
     conn = get_connection()
@@ -1190,3 +1204,258 @@ def get_difficulties():
     difficulties = cursor.fetchall()
     conn.close()
     return difficulties
+
+def delete_user_levels(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        DELETE FROM user_levels
+        WHERE user_id = ?
+    """
+
+    cursor.execute(query, (user_id,))
+    conn.commit()
+    conn.close()
+
+def get_unused_sentences(user_id: int, level_id: int, grammar_topic_id: int | None, lexical_topic_id: int | None, difficulty_id: int, limit: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            s.id,
+            s.sentence
+        FROM sentences s
+        WHERE s.level_id = ?
+          AND s.difficulty_id = ?
+          AND (
+                s.grammar_topic_id = ?
+                OR (? IS NULL AND s.grammar_topic_id IS NULL)
+              )
+          AND (
+                s.lexical_topic_id = ?
+                OR (? IS NULL AND s.lexical_topic_id IS NULL)
+              )
+          AND NOT EXISTS (
+                SELECT 1
+                FROM user_answers ua
+                WHERE ua.user_id = ?
+                  AND ua.sentence_id = s.id
+              )
+        ORDER BY RANDOM()
+        LIMIT ?
+    """
+
+    cursor.execute(
+        query,
+        (
+            level_id,
+            difficulty_id,
+            grammar_topic_id,
+            grammar_topic_id,
+            lexical_topic_id,
+            lexical_topic_id,
+            user_id,
+            limit
+        )
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return rows
+
+
+
+async  def save_user_question(user_id, sentence_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+         INSERT INTO user_answers (
+            user_id,
+            sentence_id
+        )
+        VALUES (?, ?)    
+    """
+
+    
+    params = (user_id,sentence_id, )
+    cursor.execute(query, params)
+
+    res = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    return res
+
+
+
+async  def save_user_answer(user_answer_id, user_answer_text):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+         UPDATE user_answers 
+        SET user_answer = ?
+        WHERE id = ?          
+    """    
+    params = (user_answer_text, user_answer_id,)
+    cursor.execute(query, params)
+
+
+    conn.commit()
+    conn.close()
+
+async  def save_ai_answer(user_answer_id, ai_answer_text):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+         UPDATE user_answers
+        SET ai_answer = ?
+        WHERE id = ?        
+    """
+    params = (ai_answer_text, user_answer_id,)
+    cursor.execute(query, params)
+
+
+    conn.commit()
+    conn.close()
+
+    
+def get_user_subscription(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            s.id,
+            s.code,
+            s.name,
+            s.price,
+            s.period_months,
+            s.daily_limit,
+            us.started_at,
+            us.expires_at
+        FROM user_subscriptions us
+        JOIN subscriptions s
+            ON s.id = us.subscription_id
+        WHERE us.user_id = ?
+          AND us.expires_at > CURRENT_TIMESTAMP
+        ORDER BY us.expires_at DESC
+        LIMIT 1
+    """
+
+    cursor.execute(query, (user_id,))
+    result = cursor.fetchone()
+
+    conn.close()
+
+    return result
+
+
+def check_grammar_topic_access(user_id, grammar_topic_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT subscription_required
+        FROM grammar_topics
+        WHERE id = ?
+    """
+
+    cursor.execute(query, (grammar_topic_id,))
+    topic = cursor.fetchone()
+
+    conn.close()
+
+    if topic is None:
+        return False
+
+    # Бесплатная тема
+    if topic[0] is None:
+        return True
+
+    # Требуется Premium
+    if topic[0] == "premium":
+        subscription = get_user_subscription(user_id)
+        return subscription is not None
+
+    return False
+
+
+def get_daily_questions_count(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT COUNT(*)
+        FROM user_answers
+        WHERE user_id = ?
+          AND DATE(created_at) = DATE('now')
+    """
+
+    cursor.execute(query, (user_id,))
+    count = cursor.fetchone()[0]
+
+    conn.close()
+
+    return count
+
+def get_subscription(subscription_code):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT id, code, name, price, period_months, daily_limit
+        FROM subscriptions
+        WHERE code = ?
+    """
+ 
+    cursor.execute(query, (subscription_code,))
+    result = cursor.fetchone()
+
+    conn.close()
+
+    return result
+
+def save_payment(
+    user_id,
+    subscription_id,
+    yookassa_payment_id,
+    amount,
+    currency,
+    status
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        INSERT INTO payments (
+            user_id,
+            subscription_id,
+            yookassa_payment_id,
+            amount,
+            currency,
+            status
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+    """
+
+    params = (
+        user_id,
+        subscription_id,
+        yookassa_payment_id,
+        amount,
+        currency,
+        status
+    )
+
+    cursor.execute(query, params)
+    conn.commit()
+    payment_id = cursor.lastrowid
+    conn.close()
+
+    return payment_id

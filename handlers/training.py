@@ -11,18 +11,323 @@ import data.database as db
 import keyboards as kb
 import json
 import asyncio
+
 from aiogram.exceptions import TelegramBadRequest
+import handlers.routes_base_function as rbf
+from handlers.routes_base_function import my_print
 
 import states as st
 router = Router()
+
 TOTAL_QUESTIONS = 10
 import prompts as p
+generation_events = {}
 
+async def tarining_start(
+    callback: CallbackQuery,
+    state: FSMContext
+):
 
+    data = await state.get_data()
 
+    level_id = data.get("level_id")
+    user_id = data.get("user_id")
+    grammar_topic_id = data.get("grammar_topic_id")
+    lexical_topic_id = data.get("lexical_topic_id")
+    difficulty_id = data.get("difficulty_id")
+    welcome_mode = data.get("welcome_mode")
+    active_messages = data.get("active_messages", [])
 
-async def tarining_start(callback: CallbackQuery, state: FSMContext):
-    print("tarining_start")
+    # --------------------------------------------------
+    # Количество предложений
+    # --------------------------------------------------
+
+    total_sentences = 3 if welcome_mode else TOTAL_QUESTIONS
+
+    await state.update_data(
+        current_sentence=0,
+        total_sentence=total_sentences
+    )
+
+    # --------------------------------------------------
+    # Создаём Event для этой тренировки
+    # --------------------------------------------------
+
+    generation_events[user_id] = asyncio.Event()
+
+    await state.update_data(
+        generation_finished=False
+    )
+
+    # --------------------------------------------------
+    # Сообщение о начале тренировки
+    # --------------------------------------------------
+
+    cur_mes = await callback.message.answer(
+        f"Начинаем тренировку!\n\n"
+        f"Заданий будет: {total_sentences}\n"
+        f"Отправляйте перевод прямо в чат."
+    )
+
+    active_messages.append({
+        "message": cur_mes,
+        "author": "bot",
+        "type": "training_start_mess"
+    })
+
+    await state.update_data(
+        active_messages=active_messages
+    )
+
+    await rbf.delete_active_messages(
+        state,
+        type="menu"
+    )
+
+    # --------------------------------------------------
+    # Сколько пытаемся взять из БД
+    # --------------------------------------------------
+
+    DB_SENTENCES = 3
+
+    db_count = min(
+        DB_SENTENCES,
+        total_sentences
+    )
+
+    generate_count = (
+        total_sentences - db_count
+    )
+
+    # --------------------------------------------------
+    # Запускаем загрузку БД
+    # --------------------------------------------------
+
+    db_task = asyncio.create_task(
+        load_sentences_from_db(
+            user_id=user_id,
+            level_id=level_id,
+            grammar_topic_id=grammar_topic_id,
+            lexical_topic_id=lexical_topic_id,
+            difficulty_id=difficulty_id,
+            count=db_count
+        )
+    )
+
+    # --------------------------------------------------
+    # Параллельно запускаем AI
+    # --------------------------------------------------
+
+    generation_task = None
+
+    if generate_count > 0:
+
+        prompt = await p.get_sentences_prompt(
+            user_id=user_id,
+            level_id=level_id,
+            difficulty=difficulty_id,
+            grammar_topic_id=grammar_topic_id,
+            lexical_topic_id=lexical_topic_id,
+            sentence_count=generate_count,
+            welcome_mode=welcome_mode
+        )
+
+        generation_task = asyncio.create_task(
+            cl.generate_sentences(prompt)
+        )
+
+    # --------------------------------------------------
+    # Ждём БД
+    # --------------------------------------------------
+
+    db_sentences = await db_task
+
+    sentences_count = len(
+        db_sentences["sentences"]
+    )
+
+    print(
+        f"Из БД получено предложений: {sentences_count}"
+    )
+
+    # --------------------------------------------------
+    # БД вернула предложения
+    # --------------------------------------------------
+
+    if sentences_count > 0:
+
+        await state.update_data(
+            sentences=db_sentences
+        )
+
+        # Сразу начинаем тренировку
+        await show_next_sentence(
+            callback.message,
+            state
+        )
+
+        # --------------------------------------------------
+        # AI продолжает генерировать в фоне
+        # --------------------------------------------------
+
+        if generation_task is not None:
+
+            asyncio.create_task(
+                finish_sentence_generation(
+                    generation_task=generation_task,
+                    state=state,
+                    user_id=user_id,
+                    level_id=level_id,
+                    grammar_topic_id=grammar_topic_id,
+                    lexical_topic_id=lexical_topic_id,
+                    difficulty_id=difficulty_id
+                )
+            )
+
+        return
+
+    # --------------------------------------------------
+    # БД ничего не вернула
+    # --------------------------------------------------
+
+    print(
+        "В БД нет подходящих предложений. "
+        "Ждём AI."
+    )
+
+    if generation_task is None:
+        print("Нет задачи генерации AI")
+        return
+
+    await finish_sentence_generation(
+        generation_task=generation_task,
+        state=state,
+        user_id=user_id,
+        level_id=level_id,
+        grammar_topic_id=grammar_topic_id,
+        lexical_topic_id=lexical_topic_id,
+        difficulty_id=difficulty_id
+    )
+
+    await show_next_sentence(
+        callback.message,
+        state
+    )
+
+async def finish_sentence_generation(
+    generation_task,
+    state: FSMContext,
+    user_id: int,
+    level_id: int,
+    grammar_topic_id: int | None,
+    lexical_topic_id: int | None,
+    difficulty_id: int
+):
+
+    try:
+
+        # --------------------------------------------------
+        # Ждём AI
+        # --------------------------------------------------
+
+        generated = await generation_task
+
+        print("AI генерация закончена")
+
+        generated_json = json.loads(
+            generated
+        )
+
+        generated_sentences = generated_json.get(
+            "sentences",
+            []
+        )
+
+        #print(
+        #    f"AI сгенерировал: "
+        #    f"{len(generated_sentences)}"
+        #)
+
+        # --------------------------------------------------
+        # Сохраняем в БД
+        # --------------------------------------------------
+
+        save_sentences(
+            sentences_data=generated_json,
+            level_id=level_id,
+            grammar_topic_id=grammar_topic_id,
+            lexical_topic_id=lexical_topic_id,
+            difficulty_id=difficulty_id,
+            sentence_type=0
+        )
+
+        # --------------------------------------------------
+        # Получаем текущие предложения
+        # --------------------------------------------------
+
+        data = await state.get_data()
+
+        sentences = data.get(
+            "sentences",
+            {
+                "sentences": []
+            }
+        )
+
+        # --------------------------------------------------
+        # Добавляем AI-предложения
+        # --------------------------------------------------
+
+        sentences["sentences"].extend(
+            generated_sentences
+        )
+
+        # --------------------------------------------------
+        # Обновляем FSM
+        # --------------------------------------------------
+
+        await state.update_data(
+            sentences=sentences,
+            generation_finished=True
+        )
+
+        print(
+            f"Всего теперь доступно: "
+            f"{len(sentences['sentences'])}"
+        )
+
+    except Exception as e:
+
+        print(
+            f"Ошибка фоновой генерации: {e}"
+        )
+
+        await state.update_data(
+            generation_finished=True
+        )
+
+    finally:
+
+        # --------------------------------------------------
+        # Разблокируем show_next_sentence()
+        # --------------------------------------------------
+
+        event = generation_events.get(
+            user_id
+        )
+
+        if event:
+            event.set()
+
+        print(
+            f"Generation event установлен "
+            f"для user_id={user_id}"
+        )
+
+# Не удалять, пока не отладится новая функция
+async def tarining_start_old(callback: CallbackQuery, state: FSMContext):
+    
+
     data = await state.get_data()
     level_id = data.get("level_id")
     user_id = data.get("user_id")
@@ -30,29 +335,39 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
     lexical_topic_id =  data.get("lexical_topic_id")
     difficulty_id = data.get("difficulty_id")
     welcome_mode = data.get("welcome_mode")
+    active_messages = data.get("active_messages")
 
-    print(f"welcome_mode {welcome_mode}")
+
     sentece_cont = TOTAL_QUESTIONS
     if welcome_mode:sentece_cont = 3
     
 
     await state.update_data(current_sentence = 0, total_sentence = sentece_cont)
+    #await rbf.delete_active_messages(state, type="menu")
 
     # Приветствие
-    await callback.message.answer(
-        f"Начинаем тренировку!\n\n"
-        f"Задания скоро появятся. Всего их будет: {sentece_cont}\n"
-        f"Отправляйте перевод прямо в чат."
-    )
+    print (f"active_messages {len(active_messages)}, {active_messages}")
+    
+    cur_mes =  await callback.message.answer(
+            f"Начинаем тренировку!\n\n"
+            f"Задания скоро появятся. Всего их будет: {sentece_cont}\n"
+            f"Отправляйте перевод прямо в чат."
+    )   
+    active_messages.append({
+                "message" : cur_mes,
+                "author": "bot",
+                "type": "training_start_mess"
+    })   
+
+    #print(active_messages)
+    await rbf.delete_active_messages(state, type="menu")
 
 
-    progress_message = await callback.message.answer(make_progress_bar(0, sentece_cont))
-    await state.update_data(progress_message=progress_message)
+
+    await state.update_data(active_messages=active_messages)
     
     prompt = await p.get_sentences_prompt(user_id=user_id, level_id=level_id, difficulty=difficulty_id, grammar_topic_id=grammar_topic_id, lexical_topic_id=lexical_topic_id,  sentence_count= sentece_cont, welcome_mode = welcome_mode)
     sentences = await cl.generate_sentences(prompt)
-
-    
     
     sentences_JSON = json.loads(sentences)
     save_sentences(sentences_data=sentences_JSON, level_id=level_id, grammar_topic_id=grammar_topic_id, lexical_topic_id=lexical_topic_id, difficulty_id=difficulty_id, sentence_type=0)
@@ -61,7 +376,40 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
     await show_next_sentence(callback.message, state)
 
 
-def make_progress_bar(current: int, total: int, length: int = 10) -> str:
+async def load_sentences_from_db(
+    user_id: int,
+    level_id: int,
+    grammar_topic_id: int | None,
+    lexical_topic_id: int | None,
+    difficulty_id: int,
+    count: int
+):
+    rows = await asyncio.to_thread(
+        db.get_unused_sentences,
+        user_id,
+        level_id,
+        grammar_topic_id,
+        lexical_topic_id,
+        difficulty_id,
+        count
+    )
+
+    return {
+        "sentences": [
+            {
+                "question_id": row[0],
+                "question": row[1],
+                "answer": "",
+                "tips": []
+            }
+            for row in rows
+        ]
+    }
+    
+
+
+
+def make_progress_bar(current: int, total: int, length: int = 20) -> str:
     filled = round(length * current / total)
     empty = length - filled
 
@@ -76,44 +424,131 @@ def make_progress_bar(current: int, total: int, length: int = 10) -> str:
         f"{'█' * filled}{'░' * empty}  {current}/{total}"
     )
 
+async def show_next_sentence(
+    message: Message,
+    state: FSMContext
+):
+    data = await state.get_data()
 
-async def show_next_sentence(message: Message, state: FSMContext):
+    current_sentence = data.get("current_sentence", 0)
+    total_sentence = data.get("total_sentence", TOTAL_QUESTIONS)
+    sentences = data.get("sentences", {"sentences": []})
+    user_id = data["user_id"]
+
+    #await rbf.delete_active_messages(state, type="training_question")
+    next_sentence_number = current_sentence + 1
+
+    if next_sentence_number > total_sentence:
+        await finish_training(message, state)
+        return
+
+    
+    # Проверяем, есть ли следующее предложение
+    while next_sentence_number > len(sentences["sentences"]):
+
+        print(
+            f"Предложение №{next_sentence_number} "
+            f"ещё не готово. "
+            f"Сейчас доступно: "
+            f"{len(sentences['sentences'])}"
+        )
+
+        # Получаем актуальные данные из FSM
+        data = await state.get_data()
+        sentences = data.get("sentences",{"sentences": []})
+
+        if data.get("generation_finished",False):
+
+            print("Генерация закончилась, но нужного предложения нет.")
+            await message.answer("Не удалось подготовить следующее задание.")
+            return
+
+
+        event = generation_events.get(user_id)
+
+        if event is None:
+
+            print(
+                f"generation_event не найден "
+                f"для user_id={user_id}"
+            )
+
+            await message.answer(
+                "Не удалось подготовить следующее задание."
+            )
+
+            return
+
+        # ----------------------------------------------
+        # Ждём окончания генерации
+        # ----------------------------------------------
+
+        print(
+            "Ждём завершения генерации..."
+        )
+
+        await event.wait()
+
+        # ----------------------------------------------
+        # После генерации снова читаем FSM
+        # ----------------------------------------------
+
+        data = await state.get_data()
+
+        sentences = data.get(
+            "sentences",
+            {"sentences": []}
+        )
+
+    #Проверяем подписку
+
+    if not can_get_question(user_id):
+        await message.answer(
+            "Вы использовали 3 бесплатных предложения на сегодня.\n\n"
+            "С Premium количество предложений не ограничено."
+        )
+        return
+
+
+
+    # --------------------------------------------------
+    # Получаем предложение
+    # --------------------------------------------------
+
+
+
+
+    sentence_data = sentences["sentences"][next_sentence_number - 1]
+
+    question = sentence_data["question"]
+    question_id = sentence_data.get("question_id")
+
+    await state.update_data(current_sentence=next_sentence_number,tips_showed=False)
+
+    cur_mes = await message.answer(
+        f"{next_sentence_number}. {question}",
+        reply_markup=kb.sentence_answer_keyboard()
+    )
+    user_answer_id = await db.save_user_question(user_id=user_id, sentence_id=question_id)
+    sentences["sentences"][next_sentence_number - 1]["user_answer_id"] = user_answer_id
 
     data = await state.get_data()
-    await delete_prev_messages(state)
+    active_messages = data.get("active_messages", [])
 
-    
-    current_sentence =data.get("current_sentence")
-    total_sentence =data.get("total_sentence") 
-    sentences = data["sentences"]   
+    active_messages.append({
+        "message": cur_mes,
+        "author": "bot",
+        "type": "training_question"
+    })
 
-    if current_sentence>0:
-        progress_message = data["progress_message"]
+    await state.update_data(active_messages=active_messages)
 
-        try:
-            await progress_message.edit_text(make_progress_bar(current_sentence, total_sentence, 10))
-        except TelegramBadRequest as e:
-                if "message is not modified" in str(e):
-                    pass
-                else:
-                    raise
+    # --------------------------------------------------
+    # Состояние ожидания ответа
+    # --------------------------------------------------
 
+    await state.set_state(st.MainStates.bliz_answer)
 
-        
-    
-    
-    await state.update_data(tips_message_2=None)
-
-    if current_sentence == total_sentence:
-        await finish_training(message, state)
-
-    else:
-        current_sentence +=1
-        await state.update_data(current_sentence = current_sentence, tips_showed = False)
-        mes = f"{current_sentence}. {sentences['sentences'][current_sentence - 1]['question']}"
-        sentence_message_1 = await message.answer(mes,  reply_markup=kb.sentence_answer_keyboard())
-        await state.update_data(sentence_message_1=sentence_message_1)
-        await state.set_state(st.MainStates.bliz_answer)
 
 #Обработка ответа пользвоателя
 @router.message(st.MainStates.bliz_answer)
@@ -123,34 +558,51 @@ async def training_answer_handler(message: Message, state: FSMContext):
     sentences = data["sentences"]        
     current_sentence = data["current_sentence"]
     total_sentence =data.get("total_sentence") 
-    answer_sentence_3 = message
-    await state.update_data(answer_sentence_3 = answer_sentence_3)
-
+    active_messages = data["active_messages"]
+    cur_mes = message
+    user_unswer_id = sentences["sentences"][current_sentence - 1]["user_answer_id"] 
+    active_messages.append({
+                        "message" : cur_mes,
+                        "author": "user",
+                        "type": "training_answer"
+            })   
+    await state.update_data(active_messages=active_messages)
+    
     user_answer = message.text.strip()
+
+
+    await db.save_user_answer(user_answer_id = user_unswer_id, user_answer_text = user_answer)
     question = sentences['sentences'][current_sentence-1]["question"]
     question_id = sentences['sentences'][current_sentence-1]["question_id"] 
 
     # Сохраняем ответ в state
     ai_result = await cl.check_answer(russian_sentence=question, user_answer=user_answer)
-    sentences['sentences'][current_sentence-1]["answer"] = user_answer
-    sentences['sentences'][current_sentence-1]["ai_result"] = ai_result
-
+    ai_result_text =  json.dumps(ai_result, ensure_ascii=False)
+    sentences['sentences'][current_sentence]["answer"] = user_answer
+    sentences['sentences'][current_sentence]["ai_result"] = ai_result
+    await db.save_ai_answer(user_answer_id = user_unswer_id, ai_answer_text =ai_result_text)
+        
     
     await state.update_data(sentences=sentences)
     
-    db.save_user_answer(
-        user_id=message.from_user.id,
-        sentence_id=question_id,
-        user_answer=user_answer,
-        ai_answer = json.dumps(
-                ai_result,
-                ensure_ascii=False
-            )
-    )
+    #db.save_user_answer(
+    #    user_id=message.from_user.id,
+    #    sentence_id=question_id,
+    #   user_answer=user_answer,
+    #    ai_answer = json.dumps(
+    #            ai_result,
+    #            ensure_ascii=False
+    #        )
+    #)
 
-    feedback_message_4 = await message.answer(cl.format_check_result(ai_result),reply_markup=kb.next_sentence_keyboard())
+    cur_mes = await message.answer(cl.format_check_result(ai_result),reply_markup=kb.next_sentence_keyboard())
+    active_messages.append({
+                            "message" : cur_mes,
+                            "author": "bot",
+                            "type": "training_ai_result"
+                })   
+    await state.update_data(active_messages=active_messages)
 
-    await state.update_data(feedback_message_4=feedback_message_4)
     
     # Последний вопрос?
     if current_sentence < total_sentence:
@@ -161,53 +613,36 @@ async def training_answer_handler(message: Message, state: FSMContext):
 
 
 
-    
-async def delete_prev_messages(state: FSMContext):
-    data = await state.get_data()
-    sentence_message_1 = data.get("sentence_message_1")
-    tips_message_2 = data.get("tips_message_2")
-    answer_sentence_3 = data.get("answer_sentence_3")
-    feedback_message_4 = data.get("feedback_message_4")
-
-    if sentence_message_1 is not None: await sentence_message_1.delete()
-    if tips_message_2 is not None: await tips_message_2.delete()
-    if answer_sentence_3 is not None: await answer_sentence_3.delete()
-    if feedback_message_4 is not None: await feedback_message_4.delete()
-
-    await state.update_data(sentence_message_1 = None)
-    await state.update_data(tips_message_2 = None)
-    await state.update_data(answer_sentence_3 = None)
-    await state.update_data(feedback_message_4 = None)
-
 
 
 #Показываем подсказки
 @router.callback_query(st.MainStates.bliz_answer , F.data == "answer_tips")
 async def answer_show_tips_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()    
-    #await state.set_state(st.MainStates.bliz_tips)
     
     data = await state.get_data()
-    tips_message_2 =data.get("tips_message_2")
+    active_messages = data["active_messages"]
+    tips_message=data.get("tips_message_showed") #None - не показано | tips - подсказки | sentence - Предложение
 
-    print(f"tips_message_2 {tips_message_2}")
-    if tips_message_2 is None:
+
+    if tips_message is None:
         total_sentence = data["total_sentence"]
         sentences = data["sentences"]        
         current_sentence = data["current_sentence"]
         tips = sentences['sentences'][current_sentence - 1]['tips']
-        new_mes = await callback.message.answer(format_tips(tips))
-        await state.update_data(tips_message_2=new_mes)
-    else:
-        await tips_message_2.delete()
-        await state.update_data(tips_message_2=None)
+        cur_mes = await callback.message.answer(format_tips(tips))
+        active_messages.append({
+                                "message" : cur_mes,
+                                "author": "bot",
+                                "type": "training_tips"
+                        })   
+        await state.update_data(active_messages=active_messages)
+        await state.update_data(tips_message=cur_mes)
 
-        
+
     
 
-    #if current_sentence==total_sentence:
-    #    a = True
-        #выход из тренировки
+   
 
 #Следующее предложение
 @router.callback_query(st.MainStates.bliz_answer , F.data == "next_sentence")
@@ -228,76 +663,133 @@ async def answer_finish_training_handler(callback: CallbackQuery, state: FSMCont
     
 #Выводим общий итог - комментарий
 async def finish_training(message: Message, state: FSMContext):
-    await delete_prev_messages(state)
     data = await state.get_data()
     level_id = data["level_id"]
     sentences = data["sentences"]   
     welcome_mode = data["welcome_mode"]  
-
+    active_messages = data["active_messages"]
     current_sentence =data.get("current_sentence")
     total_sentence =data.get("total_sentence") 
-
-    #Обновляем прогресс бар
-    if current_sentence>0:
-        progress_message = data["progress_message"]
-
-        try:
-            await progress_message.edit_text(make_progress_bar(current_sentence, total_sentence, 10))
-        except TelegramBadRequest as e:
-            if "message is not modified" in str(e):
-                pass
-            else:
-                raise
-
-
-
 
 
     analysis_data = prepare_training_analysis_data(sentences["sentences"])
     analized_result = await cl.analyze_training(analysis_data)
 
     if welcome_mode:
-        await message.answer(format_training_analysis(analized_result))  
-        #await message.answer("Вы увидели не только правильные ответы, но и свои ошибки с объяснениями.")   
-        await message.answer("Вот так работает GRAMMO\n Переводите предложение -> Получаете обратную связь -> Становитесь лучше вместе с GRAMMO\n\n")  
-        await message.answer("Хотите продолжить?", reply_markup=kb.yes2_keyboard()) 
-    else:
-        await message.answer(format_training_analysis(analized_result),  reply_markup=kb.finish_training_keyboard())
+        cur_mes = await message.answer(format_training_analysis(analized_result))  
 
-#Возврат в галвное меню
+        active_messages.append({
+                                    "message" : cur_mes,
+                                    "author": "bot",
+                                    "type": "training_total_ai_result"
+                                })   
+        await state.update_data(active_messages=active_messages)
+      
+        cur_mes = await message.answer("Вот так работает GRAMMO\n--> Переводите предложение\n--> Получаете обратную связь\n--> Становитесь лучше вместе с GRAMMO\n\n")  
+        active_messages.append({
+                                "message" : cur_mes,
+                                "author": "bot",
+                                "type": "onboard"
+                            })   
+        cur_mes = await message.answer("Хотите продолжить?", reply_markup=kb.yes2_keyboard()) 
+        active_messages.append({
+                                        "message" : cur_mes,
+                                        "author": "bot",
+                                        "type": "onboard"
+                                })
+        await state.update_data(active_messages=active_messages)
+
+       
+    else:
+        cur_mes=await message.answer(format_training_analysis(analized_result),  reply_markup=kb.finish_training_keyboard())
+        active_messages.append({
+                                "message" : cur_mes,
+                                "author": "bot",
+                                "type": "training_total_ai_result"
+                                })
+        await state.update_data(active_messages=active_messages)
+
+        user_id = data["user_id"]
+        generation_events.pop(
+            user_id,
+            None
+        )
+
+
 @router.callback_query(st.MainStates.bliz_answer , F.data == "yes2")
 async def yes2_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await callback.message.answer(mes.get_onboard_mes(), reply_markup=kb.onboard_keyboard()) 
+    fdata = F.data
+
+    data = await state.get_data()
+    active_messages = data["active_messages"]
+
+    await my_print(state, "yes2_handler")
+
+    await rbf.delete_active_messages(state, type="training_start_mess")
+    await rbf.delete_active_messages(state, type = "training_question")
+    await rbf.delete_active_messages(state, type = "training_answer")
+    await rbf.delete_active_messages(state, type = "training_tips")
+    await rbf.delete_active_messages(state, type = "training_ai_result")
+    await rbf.delete_active_messages(state, type = "training_total_ai_result")
 
 
-@router.callback_query(F.data.startswith("onboard_pay"))
+    cur_mes = await callback.message.answer(mes.get_onboard_mes(), reply_markup=kb.onboard_keyboard()) 
+    active_messages.append({
+                            "message" : cur_mes,
+                            "author": "bot",
+                            "type": "onboard"
+                                })  
+    await state.update_data(active_messages=active_messages)
+
+@router.callback_query(F.data.startswith("onboard_"))
 async def onboard_pay_handler(callback: CallbackQuery, state: FSMContext):
-    print("im here pay in onboard")
+    print("onboard_pay_handler")
+    await my_print(state, f"state: {state}")
 
     await callback.answer()
+
+    fdata = callback.data
+
     data = await state.get_data()
+    active_messages = data.get("active_messages", [])
     level_id = data["level_id"]
 
-    stop1 = True
-    if F.data == "onboard_pay":
-        await callback.message.answer("Позддравляем с умпешным оформление подписки. Желаем хорошей тренировки.")
-        stop1 = False
+    print(f"fdata: {fdata}")
 
-    if F.data == "onboard_free":
-        await callback.message.answer("Хорошо. вы всегда сможете подключить полный доступ позже.")
-        stop1 = False
+    if fdata == "onboard_pay":
 
-    if stop1: return
+        cur_mes = await callback.message.answer(
+            "Поздравляем с успешным оформлением подписки. "
+            "Желаем хорошей тренировки.",
+            reply_markup=kb.finish_training_keyboard2(
+                "Отлично, спасибо :)"
+            )
+        )
 
-   
+    elif fdata == "onboard_free":
 
-    await state.update_data(welcome_mode = False)
-    await state.set_state(st.MainStates.main_menu,)
-    print(state)
-    print(state.get_data())
-    
-    await callback.message.answer("Главное меню", reply_markup=kb.main_menu_keyboard(level_id))
+        cur_mes = await callback.message.answer(
+            "Хорошо. Вы всегда сможете подключить полный доступ позже.",
+            reply_markup=kb.finish_training_keyboard2(
+                "Хорошо, спасибо"
+            )
+        )
+
+    else:
+        return
+
+    active_messages.append({
+        "message": cur_mes,
+        "author": "bot",
+        "type": "onboard"
+    })
+    await state.update_data(active_messages=active_messages)
+
+    await state.update_data(
+        active_messages=active_messages,
+        welcome_mode=False
+    )
 
   
     
@@ -306,11 +798,32 @@ async def onboard_pay_handler(callback: CallbackQuery, state: FSMContext):
 #Возврат в галвное меню
 @router.callback_query(st.MainStates.bliz_answer , F.data == "training_main_menu")
 async def answer_back_to_main_menu(callback: CallbackQuery, state: FSMContext):
+    await my_print(state = state, mes = "answer_back_to_main_menu")
     await callback.answer()
     data = await state.get_data()
     level_id = data["level_id"]
+    active_messages = ["active_messages"]
     await state.set_state(st.MainStates.main_menu)
-    await callback.message.answer("Главное меню", reply_markup=kb.main_menu_keyboard(level_id))
+
+    cur_mes = await callback.message.answer("Главное меню", reply_markup=kb.main_menu_keyboard(level_id))
+
+    await rbf.delete_active_messages(state, type="training_start_mess")
+    await rbf.delete_active_messages(state, type = "training_question")
+    await rbf.delete_active_messages(state, type = "training_answer")
+    await rbf.delete_active_messages(state, type = "training_tips")
+    await rbf.delete_active_messages(state, type = "training_ai_result")
+    await rbf.delete_active_messages(state, type = "training_total_ai_result")
+    await rbf.delete_active_messages(state = state, type = "onboard")
+
+    active_messages.append({
+                "message" : cur_mes,
+                "author": "bot",
+                "type": "menu"
+            })     
+
+
+ 
+
 
 
 def format_tips(tips):
@@ -820,15 +1333,15 @@ async def blitz_answer(
     )
 
     
-    db.save_user_answer(
-        user_id=message.from_user.id,
-        sentence_id=current_sentence_id,
-        user_answer=user_answer,
-        ai_answer = json.dumps(
-                ai_result,
-                ensure_ascii=False
-            )
-    )
+   # db.save_user_answer(
+   #     user_id=message.from_user.id,
+   #     sentence_id=current_sentence_id,
+   #     user_answer=user_answer,
+   #     ai_answer = json.dumps(
+   #             ai_result,
+   #             ensure_ascii=False
+   #         )
+   # )
 
     await message.answer(cl.format_check_result(ai_result))
 
@@ -918,3 +1431,25 @@ async def finish_blitz(
         "Начинаем тренировку?",
         reply_markup=kb.main_menu_keyboard(level)
     )
+
+
+
+
+
+##################################333
+
+
+
+def can_get_question(user_id):
+    subscription = db.get_user_subscription(user_id)
+
+    # Есть активная Premium-подписка
+    if subscription is not None:
+        return True
+
+    # Бесплатный тариф
+    daily_count = db.get_daily_questions_count(user_id)
+
+    return daily_count < 3
+
+    

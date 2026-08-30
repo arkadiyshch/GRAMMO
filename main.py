@@ -16,7 +16,7 @@ import os
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp_socks import ProxyConnector
 
-from handlers import routes, menu, training
+from handlers import menu, routes_base_function, training 
 
 from data.database import create_tables
 
@@ -47,7 +47,7 @@ async def mainLocal() -> None:
     dp = Dispatcher(storage=MemoryStorage())
     dp.message.middleware(RateLimitMiddleware())
     #dp.message.middleware(AdminOnlyMiddleware())
-    dp.include_router(routes.router)
+    dp.include_router(routes_base_function.router)
     dp.include_router(menu.router)
     dp.include_router(training.router)
     
@@ -74,7 +74,7 @@ async def main() -> None:
     dp = Dispatcher(storage=MemoryStorage())
     dp.message.middleware(RateLimitMiddleware())
     #dp.message.middleware(AdminOnlyMiddleware())
-    dp.include_router(routes.router)
+    dp.include_router(routes_base_function.router)
     dp.include_router(menu.router)
     dp.include_router(training.router)
     
@@ -97,3 +97,4 @@ if __name__ == "__main__":
         asyncio.run(mainLocal())
     else:   
         asyncio.run(main())
+        #asyncio.run(tr.test_parallel_gen_sentences())
