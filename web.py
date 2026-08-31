@@ -6,9 +6,9 @@ app = FastAPI()
 from fastapi import FastAPI, Request
 
 
-@app.get("/")
+@app.get("/123")
 async def root():
-    return {"status": "ok"}
+    return {"status": "ok_123"}
 
 
 @app.post("/yookassa/webhook")
