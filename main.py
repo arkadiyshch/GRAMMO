@@ -118,7 +118,7 @@ async def start_web_server():
     config = uvicorn.Config(
         app,
         host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
+        port=int(os.getenv("PORT", 3000)),
         log_level="info"
     )
 
