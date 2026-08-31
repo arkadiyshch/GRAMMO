@@ -94,6 +94,7 @@ async def main() -> None:
         start_web_server()
     )
 
+    print("WEB SERVER TASK CREATED")
 
     try:
         await dp.start_polling(bot)
