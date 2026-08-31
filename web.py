@@ -19,3 +19,13 @@ async def yookassa_webhook(request: Request):
     print(data)
 
     return {"status": "ok"}
+
+@app.get("/yookassa/webhook123")
+async def yookassa_webhook_test():
+    return {"status": "ok123"}
+
+
+print("REGISTERED ROUTES:")
+
+for route in app.routes:
+    print(route.path, route.methods)
