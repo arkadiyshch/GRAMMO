@@ -21,12 +21,13 @@ import states as st
 router = Router()
 
 #Главное меню - Подипска Входная точка
-@router.callback_query(st.MainStates.subscription , F.data == "user_subscription")
+@router.callback_query(st.MainStates.main_menu, F.data == "user_subscription")
 async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
     user_id = data["user_id"]
 
+    await state.set_state(st.MainStates.subscription)
     subscription = db.get_user_subscription(user_id=user_id)
 
     if subscription is None:

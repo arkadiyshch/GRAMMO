@@ -20,6 +20,8 @@ async def yookassa_webhook(request: Request):
 
     return {"status": "ok"}
 
+
+
 @app.get("/yookassa/webhook123")
 async def yookassa_webhook_test():
     return {"status": "ok123"}

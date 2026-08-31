@@ -78,7 +78,7 @@ def main_menu_keyboard(level):
     buttons = [
         [InlineKeyboardButton(text="Тренировка", callback_data="main_training")],
         [InlineKeyboardButton(text=chengeLevelButtonText, callback_data="main_change_level")],
-        [InlineKeyboardButton(text="Подписка: Free", callback_data="1")],
+        [InlineKeyboardButton(text="Подписка: Free", callback_data="user_subscription")],
        # [InlineKeyboardButton(text="Политики", callback_data="12")],
        # [InlineKeyboardButton(text="Мои подписки", callback_data="ф1")]
     ]
