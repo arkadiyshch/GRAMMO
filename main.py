@@ -107,8 +107,14 @@ async def main() -> None:
         await bot.session.close()
             
 
+#uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 async def start_web_server():
+    #await uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
     config = uvicorn.Config(
         app,
         host="0.0.0.0",
