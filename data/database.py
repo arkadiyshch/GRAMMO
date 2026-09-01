@@ -1432,6 +1432,16 @@ def save_payment(
     conn = get_connection()
     cursor = conn.cursor()
 
+    print(f"user_id {user_id}")
+    print(f"subscription_id {subscription_id}")
+    print(f"yookassa_payment_id {yookassa_payment_id}")
+    print(f"amount {amount}")
+    print(f"currency {currency}")
+    print(f"status {status}")
+
+
+
+
     query = """
         INSERT INTO payments (
             user_id,

@@ -331,3 +331,15 @@ def subscription_cancel_keyboard():
             [InlineKeyboardButton(text="Назад", callback_data="back")] 
         ]
     )
+
+def payment_keyboard(payment_url: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Оплатить подписку",
+                    url=payment_url
+                )
+            ]
+        ]
+    )

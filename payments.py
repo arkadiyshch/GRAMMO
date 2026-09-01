@@ -5,9 +5,22 @@ from yookassa import Payment
 from data import database as db
 
 
-YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
-YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
+#YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
+#YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 
+Configuration.account_id = os.getenv("YOOKASSA_SHOP_ID")
+Configuration.secret_key = os.getenv("YOOKASSA_SECRET_KEY")
+
+
+
+#[0] id
+#[1] code       = 'premium'
+#[2] name       = 'Premium'
+#[3] price      = 350
+#[4] period     = 1
+#[5] daily_limit = 'NULL'
+#[6] started_at
+#[7] expires_at
 
 
 def get_return_url():
@@ -30,8 +43,8 @@ def create_payment(user_id):
     if subscription is None:
         raise ValueError("Premium subscription not found")
 
-    subscription_id = subscription["id"]
-    price = subscription["price"]
+    subscription_id = subscription[0]
+    price = subscription[3]
 
     idempotence_key = str(uuid.uuid4())
 

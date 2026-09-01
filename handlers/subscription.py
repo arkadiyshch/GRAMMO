@@ -23,18 +23,23 @@ router = Router()
 #Главное меню - Подипска Входная точка
 @router.callback_query(st.MainStates.main_menu, F.data == "user_subscription")
 async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
+    print("im in subscripton")
+
     await callback.answer()
     data = await state.get_data()
     user_id = data["user_id"]
 
     await state.set_state(st.MainStates.subscription)
+    print(f"state {state}")
     subscription = db.get_user_subscription(user_id=user_id)
 
+    print(f"subscription {subscription}")
+    
     if subscription is None:
-        await callback.message.edit_text(mes.get_subscribe_mes(subscription), reply_markup=kb.subscription_subscribe_keyboard())
+        await callback.message.edit_text(mes.get_user_subscription_mes(subscription), reply_markup=kb.subscription_subscribe_keyboard())
 
     else:
-        await callback.message.edit_text(mes.get_subscribe_mes(subscription).get)
+        await callback.message.edit_text(mes.get_user_subscription_mes(subscription))
 
 
 
