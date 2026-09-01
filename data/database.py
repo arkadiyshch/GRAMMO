@@ -1469,3 +1469,48 @@ def save_payment(
     conn.close()
 
     return payment_id
+
+def get_payment_by_yookassa_id(yookassa_payment_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            id,
+            user_id,
+            subscription_id,
+            yookassa_payment_id,
+            amount,
+            currency,
+            status,
+            created_at,
+            paid_at
+        FROM payments
+        WHERE yookassa_payment_id = ?
+        LIMIT 1
+    """
+
+    cursor.execute(query, (yookassa_payment_id,))
+    result = cursor.fetchone()
+
+    conn.close()
+
+    return result
+
+
+def mark_payment_succeeded(yookassa_payment_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        UPDATE payments
+        SET
+            status = 'succeeded',
+            paid_at = CURRENT_TIMESTAMP
+        WHERE yookassa_payment_id = ?
+    """
+
+    cursor.execute(query, (yookassa_payment_id,))
+    conn.commit()
+
+    conn.close()
