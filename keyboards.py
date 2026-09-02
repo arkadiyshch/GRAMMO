@@ -64,21 +64,30 @@ def welcome_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 #Клавиатура главного меню
-def main_menu_keyboard(level):
+async def main_menu_keyboard(state):
+    data = await state.get_data()
+    level_id = data.get("level_id")
+    user_id = data.get("user_id")
 
+    subscription = db.get_user_subscription(user_id)
+
+    if subscription is None:
+        subscription_name = "Бесплатная"
+    else:
+        subscription_name = subscription[2] 
     
 
     chengeLevelButtonText = ""        
-    if level is None:
+    if level_id is None:
         chengeLevelButtonText="Выберите уровень"
     else:
-        chengeLevelButtonText=f"Уровень: {db.get_level_name(level)}"    
+        chengeLevelButtonText=f"Уровень: {db.get_level_name(level_id)}"    
 
     
     buttons = [
         [InlineKeyboardButton(text="Тренировка", callback_data="main_training")],
         [InlineKeyboardButton(text=chengeLevelButtonText, callback_data="main_change_level")],
-        [InlineKeyboardButton(text="Подписка: Free", callback_data="user_subscription")],
+        [InlineKeyboardButton(text=f"Подписка: {subscription_name}", callback_data="user_subscription")],
        # [InlineKeyboardButton(text="Политики", callback_data="12")],
        # [InlineKeyboardButton(text="Мои подписки", callback_data="ф1")]
     ]

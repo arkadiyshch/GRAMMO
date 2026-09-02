@@ -1,5 +1,6 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 
 DB_NAME = "data/GRAMMO.db"
@@ -115,13 +116,25 @@ def create_tables():
     cursor.execute("""
        CREATE TABLE IF NOT EXISTS user_subscriptions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             user_id INTEGER NOT NULL,
             subscription_id INTEGER NOT NULL,
+            payment_id INTEGER NOT NULL,
+
             started_at TEXT NOT NULL,
             expires_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
-)
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(id),
+
+            FOREIGN KEY (subscription_id)
+                REFERENCES subscriptions(id),
+
+            FOREIGN KEY (payment_id)
+                REFERENCES payments(id),
+
+            UNIQUE(payment_id)
+        )
     """)
 
    
@@ -1514,3 +1527,126 @@ def mark_payment_succeeded(yookassa_payment_id):
     conn.commit()
 
     conn.close()
+
+    from datetime import datetime, timedelta
+
+
+
+def process_successful_payment(yookassa_payment_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Начинаем транзакцию и не даём двум webhook одновременно
+        # обработать один и тот же платёж
+        conn.execute("BEGIN IMMEDIATE")
+
+        # Получаем платёж
+        cursor.execute(
+            """
+            SELECT
+                id,
+                user_id,
+                subscription_id,
+                status
+            FROM payments
+            WHERE yookassa_payment_id = ?
+            """,
+            (yookassa_payment_id,)
+        )
+
+        payment = cursor.fetchone()
+
+        if payment is None:
+            raise ValueError(
+                f"Payment not found: {yookassa_payment_id}"
+            )
+
+        payment_id = payment[0]
+        user_id = payment[1]
+        subscription_id = payment[2]
+        status = payment[3]
+
+        # Если платёж уже обработан —
+        # повторно подписку не создаём
+        if status == "succeeded":
+            return {
+                "status": "already_processed",
+                "user_id": user_id
+            }
+
+        # Получаем длительность подписки
+        cursor.execute(
+            """
+            SELECT period_months
+            FROM subscriptions
+            WHERE id = ?
+            """,
+            (subscription_id,)
+        )
+
+        subscription = cursor.fetchone()
+
+        if subscription is None:
+            raise ValueError(
+                f"Subscription not found: {subscription_id}"
+            )
+
+        period_months = subscription[0]
+
+        started_at = datetime.now()
+        expires_at = started_at + timedelta(
+            days=31 * period_months
+        )
+
+        # Сначала создаём подписку.
+        # payment_id уникален, поэтому один платёж
+        # физически не сможет создать две подписки.
+        cursor.execute(
+            """
+            INSERT INTO user_subscriptions (
+                user_id,
+                subscription_id,
+                payment_id,
+                started_at,
+                expires_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                subscription_id,
+                payment_id,
+                started_at,
+                expires_at
+            )
+        )
+
+        # После успешного создания подписки
+        # помечаем платёж как оплаченный
+        cursor.execute(
+            """
+            UPDATE payments
+            SET
+                status = 'succeeded',
+                paid_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (payment_id,)
+        )
+
+        conn.commit()
+
+        return {
+            "status": "activated",
+            "user_id": user_id,
+            "subscription_id": subscription_id,
+            "payment_id": payment_id
+        }
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()

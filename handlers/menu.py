@@ -59,7 +59,7 @@ async def welcome_handler(message: Message, state: FSMContext):
         await state.update_data(welcome_mode = False) 
         await state.set_state(st.MainStates.main_menu)
 
-        cur_mes = await message.answer("Главное меню", reply_markup=kb.main_menu_keyboard(level_id))
+        cur_mes = await message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(state))
         active_messages.append({
                     "message" : cur_mes,
                     "author": "bot",
@@ -109,7 +109,7 @@ async def choosing_level_handler(callback: CallbackQuery, state: FSMContext):
     else:
         await state.set_state(st.MainStates.main_menu)
 
-        await callback.message.edit_text("Начинаем тренировку?", reply_markup=kb.main_menu_keyboard(level_id))
+        await callback.message.edit_text("Начинаем тренировку?", reply_markup=await kb.main_menu_keyboard(state))
 
         state.update_data(active_messages=active_messages)
 
@@ -271,7 +271,7 @@ async def choosing_lexical_topic_handler(callback: CallbackQuery, state: FSMCont
 async def training_back_to_main_menu_handler(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     level_id = data["level_id"]   
-    await callback.message.edit_text("Главное меню", reply_markup=kb.main_menu_keyboard(level_id))
+    await callback.message.edit_text("Главное меню", reply_markup=await kb.main_menu_keyboard(state))
 
 # Открываем меню тренировки
 @router.callback_query(st.MainStates.main_menu, F.data.startswith("main_training"))

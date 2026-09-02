@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 import data.database as db
+
 
 print("WEB MODULE LOADED")
 
@@ -18,24 +19,23 @@ async def yookassa_webhook(request: Request):
     if event == "payment.succeeded":
 
         yookassa_payment_id = data["object"]["id"]
-        payment = db.get_payment_by_yookassa_id(yookassa_payment_id)
 
-
-        if payment is None:
-            print(
-                f"Payment not found in _DB: "
-                f"{yookassa_payment_id}"
+        try:
+            result = db.process_successful_payment(
+                yookassa_payment_id
             )
-            return {"status": "ok"}
 
-        print("Payment found:", payment)   
+            print("Payment processing:", result)
 
+        except Exception as e:
+            print(f"Payment processing error: {e}")
 
-        db.mark_payment_succeeded(yookassa_payment_id)
-
+            raise HTTPException(
+                status_code=500,
+                detail="Payment processing failed"
+            )
 
     return {"status": "ok"}
-
 
 ##################################################################
 print("REGISTERED ROUTES:")
