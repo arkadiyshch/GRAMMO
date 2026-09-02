@@ -802,10 +802,11 @@ async def answer_back_to_main_menu(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
     level_id = data["level_id"]
+    user_id = data["user_id"]
     active_messages = ["active_messages"]
     await state.set_state(st.MainStates.main_menu)
 
-    cur_mes = await callback.message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(state))
+    cur_mes = await callback.message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(user_id))
 
     await rbf.delete_active_messages(state, type="training_start_mess")
     await rbf.delete_active_messages(state, type = "training_question")
@@ -1203,7 +1204,7 @@ async def back_to_main(callback: CallbackQuery, state: FSMContext):
 
     user_id =  callback.from_user.id
     level = db.get_current_user_level(user_id)
-    await callback.message.edit_text("Начинаем тренировку?", reply_markup=await kb.main_menu_keyboard(state))
+    await callback.message.edit_text("Начинаем тренировку?", reply_markup=await kb.main_menu_keyboard(user_id))
 
 # [ПОЛУЧИТЬ ВОПРОС ДЛЯ ПЕРЕВОДА]  
 #@router.callback_query(st.MainState.doing_blitz.answering)
@@ -1429,7 +1430,7 @@ async def finish_blitz(
 
     await message.answer(
         "Начинаем тренировку?",
-        reply_markup=await kb.main_menu_keyboard(state)
+        reply_markup=await kb.main_menu_keyboard(user_id)
     )
 
 

@@ -64,11 +64,9 @@ def welcome_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 #Клавиатура главного меню
-async def main_menu_keyboard(state):
-    data = await state.get_data()
-    level_id = data.get("level_id")
-    user_id = data.get("user_id")
-
+async def main_menu_keyboard(user_id):
+   
+    level_id = db.get_current_user_level_id(user_id)
     subscription = db.get_user_subscription(user_id)
 
     if subscription is None:

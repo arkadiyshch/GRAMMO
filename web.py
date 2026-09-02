@@ -33,7 +33,7 @@ async def yookassa_webhook(request: Request):
             await bot_instance.bot.send_message(
                 chat_id=user_id,
                 text="Оплата прошла успешно.\n\nГлавное меню",
-                reply_markup=await kb.main_menu_keyboard(...)
+                reply_markup=await kb.main_menu_keyboard()
             )
             
             
