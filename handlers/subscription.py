@@ -41,15 +41,86 @@ async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
     else:
         await callback.message.edit_text(mes.get_user_subscription_mes(subscription))
 
+@router.message(st.MainStates.email)
+async def process_email(
+    message: Message,
+    state: FSMContext
+):
+    email = message.text.strip()
 
+    if "@" not in email or "." not in email:
+        await message.answer(
+            "Введите корректный email:"
+        )
+        return
 
-#Оплатить подписку
-@router.callback_query(st.MainStates.subscription , F.data == "subscribe")
-async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     user_id = data["user_id"]
 
-    payment = payments.create_payment(user_id)
+    db.update_user_email(
+        user_id=user_id,
+        email=email
+    )
+
+    await state.set_state(st.MainStates.subscription)
+
+    await message.answer(
+        f"Email для чека:\n{email}",
+        reply_markup=kb.subscription_payment_keyboard()
+    )
+
+@router.callback_query(st.MainStates.subscription, F.data == "subscribe")
+async def user_subscription_handler(
+    callback: CallbackQuery,
+    state: FSMContext
+):
+    await callback.answer()
+
+    data = await state.get_data()
+    user_id = data["user_id"]
+
+    email = db.get_user_email(user_id)
+
+    if email is None:
+        await state.set_state(st.MainStates.email)
+
+        await callback.message.answer(
+            "Введите email для оформления чека:"
+        )
+        return
+
+    await callback.message.answer(
+        f"Email для чека:\n{email}",
+        reply_markup=kb.subscription_payment_keyboard()
+    )
+
+@router.callback_query(
+    st.MainStates.subscription,
+    F.data == "pay_premium"
+)
+async def pay_premium_handler(
+    callback: CallbackQuery,
+    state: FSMContext
+):
+    await callback.answer()
+
+    data = await state.get_data()
+    user_id = data["user_id"]
+
+    email = db.get_user_email(user_id)
+
+    if email is None:
+        await state.set_state(st.MainStates.email)
+
+        await callback.message.answer(
+            "Сначала укажите email для оформления чека:"
+        )
+        return
+
+    payment = payments.create_payment(
+        user_id=user_id,
+        email=email
+    )
 
     await callback.message.answer(
         "Для оплаты подписки нажмите кнопку ниже:",
@@ -59,5 +130,18 @@ async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
     )
 
 
+@router.callback_query(
+    st.MainStates.subscription,
+    F.data == "change_email"
+)
+async def change_email_handler(
+    callback: CallbackQuery,
+    state: FSMContext
+):
+    await callback.answer()
 
+    await state.set_state(st.MainStates.email)
 
+    await callback.message.answer(
+        "Введите новый email для оформления чека:"
+    )

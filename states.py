@@ -20,6 +20,8 @@ class MainStates(StatesGroup):
     bliz_tips = State()
 
     subscription = State() # Выбор топика
+
+    email = State()
     
 
 

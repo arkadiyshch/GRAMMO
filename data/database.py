@@ -1650,3 +1650,43 @@ def process_successful_payment(yookassa_payment_id):
 
     finally:
         conn.close()
+
+
+def update_user_email(user_id, email):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET email = ?
+        WHERE user_id = ?
+        """,
+        (email, user_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_user_email(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT email
+        FROM users
+        WHERE user_id = ?
+        """,
+        (user_id,)
+    )
+
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result is None:
+        return None
+
+    return result[0]        

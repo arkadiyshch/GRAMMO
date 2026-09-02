@@ -350,3 +350,21 @@ def payment_keyboard(payment_url: str) -> InlineKeyboardMarkup:
             ]
         ]
     )
+
+
+def subscription_payment_keyboard():
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="Изменить email",
+        callback_data="change_email"
+    )
+
+    builder.button(
+        text="Перейти к оплате",
+        callback_data="pay_premium"
+    )
+
+    builder.adjust(1)
+
+    return builder.as_markup()

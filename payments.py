@@ -36,7 +36,7 @@ def get_return_url():
 
 
 
-def create_payment(user_id):
+def create_payment(user_id, email):
 
     subscription = db.get_subscription("premium")
 
@@ -51,19 +51,40 @@ def create_payment(user_id):
     payment = Payment.create(
         {
             "amount": {
-                "value": f"{price}",
+                "value": f"{price:.2f}",
                 "currency": "RUB"
             },
+
             "capture": True,
+
             "confirmation": {
                 "type": "redirect",
                 "return_url": get_return_url()
             },
+
             "description": (
                 f"Premium подписка GRAMMO. "
-                f"Пользователь: {user_id}. "
+                f"Пользователь: {user_id}."
+            ),
 
-)
+            "receipt": {
+                "customer": {
+                    "email": email
+                },
+                "items": [
+                    {
+                        "description": "Premium подписка GRAMMO",
+                        "quantity": "1.00",
+                        "amount": {
+                            "value": f"{price}",
+                            "currency": "RUB"
+                        },
+                        "vat_code": 1,
+                        "payment_subject": "service",
+                        "payment_mode": "full_prepayment"
+                    }
+                ]
+            }
         },
         idempotence_key
     )
