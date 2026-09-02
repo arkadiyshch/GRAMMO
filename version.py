@@ -1,1 +1,1 @@
-VERSION = "GRAMO v0.2"
+VERSION = "GRAMO v0.2.1"

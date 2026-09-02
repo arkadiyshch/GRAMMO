@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 import data.database as db
 from bot_instance import bot
-import keyboard as kb
+import keyboards as kb
 
 
 print("WEB MODULE LOADED")
