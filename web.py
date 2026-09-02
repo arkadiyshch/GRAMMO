@@ -22,6 +22,11 @@ print("WEB MODULE LOADED")
 app = FastAPI()
 from fastapi import FastAPI, Request
 
+@app.get("/123")
+async def yookassa_webhook(request: Request):
+    print("YooKassa 123")
+
+
 @app.post("/yookassa/webhook")
 async def yookassa_webhook(request: Request):
     data = await request.json()

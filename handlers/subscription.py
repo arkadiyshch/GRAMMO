@@ -94,14 +94,8 @@ async def user_subscription_handler(
         reply_markup=kb.subscription_payment_keyboard()
     )
 
-@router.callback_query(
-    st.MainStates.subscription,
-    F.data == "pay_premium"
-)
-async def pay_premium_handler(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+@router.callback_query(st.MainStates.subscription, F.data == "pay_premium")
+async def pay_premium_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
@@ -117,16 +111,10 @@ async def pay_premium_handler(
         )
         return
 
-    payment = payments.create_payment(
-        user_id=user_id,
-        email=email
-    )
+    payment = payments.create_payment(user_id=user_id,email=email)
 
-    await callback.message.answer(
-        "Для оплаты подписки нажмите кнопку ниже:",
-        reply_markup=kb.payment_keyboard(
-            payment["confirmation_url"]
-        )
+    await callback.message.answer("Для оплаты подписки нажмите кнопку ниже:",
+        reply_markup=kb.payment_keyboard(payment["confirmation_url"])
     )
 
 
