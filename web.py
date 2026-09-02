@@ -1,7 +1,20 @@
 from fastapi import FastAPI, Request, HTTPException
 import data.database as db
-import bot_instance
 import keyboards as kb
+
+
+
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+import os
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+bot = Bot(
+        token=TOKEN,
+        default=DefaultBotProperties(parse_mode = ParseMode.HTML)           
+    )
 
 
 print("WEB MODULE LOADED")
@@ -29,9 +42,7 @@ async def yookassa_webhook(request: Request):
             #Возврат в главное меню
             user_id = result["user_id"]
 
-            print(f"bot_instance {bot_instance.bot}")
-
-            await bot_instance.bot.send_message(
+            await bot.send_message(
                 chat_id=user_id,
                 text="Оплата прошла успешно.\n\nГлавное меню",
                 reply_markup=await kb.main_menu_keyboard(user_id)
