@@ -21,7 +21,6 @@ from handlers import menu, routes_base_function, training, subscription
 from data.database import create_tables
 from web import app
 import uvicorn
-import bot_instance
 
 
 load_dotenv()
@@ -46,7 +45,7 @@ async def mainLocal() -> None:
         #Раскомментировать
         session=session       
     )
-    bot_instance.bot = bot
+   
 
     dp = Dispatcher(storage=MemoryStorage())
     dp.message.middleware(RateLimitMiddleware())
