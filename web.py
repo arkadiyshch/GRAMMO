@@ -27,7 +27,8 @@ async def yookassa_webhook(request: Request):
             )
             return {"status": "ok"}
 
-        print("Payment found:", payment)
+        print("Payment found:", payment)   
+        
 
         db.mark_payment_succeeded(yookassa_payment_id)
 
