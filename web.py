@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException
 import data.database as db
-from bot_instance import bot
+import bot_instance
 import keyboards as kb
 
 
@@ -30,7 +30,7 @@ async def yookassa_webhook(request: Request):
             user_id = result["user_id"]
 
 
-            await bot.send_message(
+            await bot_instance.bot.send_message(
                 chat_id=user_id,
                 text="Оплата прошла успешно.\n\nГлавное меню",
                 reply_markup=await kb.main_menu_keyboard(...)
