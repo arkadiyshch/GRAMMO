@@ -125,7 +125,7 @@ def create_tables():
             expires_at TEXT NOT NULL,
 
             FOREIGN KEY (user_id)
-                REFERENCES users(id),
+                REFERENCES users(user_id),
 
             FOREIGN KEY (subscription_id)
                 REFERENCES subscriptions(id),
