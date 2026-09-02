@@ -20,17 +20,19 @@ async def yookassa_webhook(request: Request):
         yookassa_payment_id = data["object"]["id"]
         payment = db.get_payment_by_yookassa_id(yookassa_payment_id)
 
+
         if payment is None:
             print(
-                f"Payment not found in DB: "
+                f"Payment not found in _DB: "
                 f"{yookassa_payment_id}"
             )
             return {"status": "ok"}
 
         print("Payment found:", payment)   
-        
+
 
         db.mark_payment_succeeded(yookassa_payment_id)
+
 
     return {"status": "ok"}
 
