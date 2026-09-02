@@ -29,6 +29,7 @@ async def yookassa_webhook(request: Request):
             #Возврат в главное меню
             user_id = result["user_id"]
 
+            print(f"bot_instance {bot_instance.bot}")
 
             await bot_instance.bot.send_message(
                 chat_id=user_id,
