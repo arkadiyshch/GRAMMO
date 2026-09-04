@@ -16,6 +16,7 @@ import prompts as p
 import handlers.routes_base_function as rbf
 
 
+
 router = Router()
 
 #[START]
@@ -123,6 +124,8 @@ async def yes_start_welcom_training(callback: CallbackQuery, state: FSMContext):
 #Выбор грамматического топика. 
 @router.callback_query(st.MainStates.choosing_grammar_topic)
 async def choosing_grammar_topic_handler(callback: CallbackQuery, state: FSMContext):
+    print("choosing_grammar_topic_handler")
+
     await callback.answer()
     data = await state.get_data()
     level_id = data["level_id"] # Нужен для фильтра уровней
@@ -155,14 +158,15 @@ async def choosing_grammar_topic_handler(callback: CallbackQuery, state: FSMCont
                 await main_training(callback, state)
         else:
             recursion_depth-=1
-            parent_topic_id = db.get_patent_grammar_topic_id(grammar_topic_id)
+            parent_topic_id = db.get_parent_grammar_topic_id(grammar_topic_id)
 
             if recursion_depth==0:
                 await state.update_data(grammar_topic_id = parent_topic_id , recursion_depth = None)
                 await state.set_state(exit_state)
             else:
+                print("im here")
                 topics = db.get_grammar_topics(parent_id = grammar_topic_id, level_id=level_id)
-                await callback.message.edit_text("Что хочешь потренировать?", reply_markup=kb.grammar_topics_keyboard(topics, show_back_button))
+                await callback.message.edit_text("Что хочешь потренировать?__", reply_markup=kb.grammar_topics_keyboard(topics, show_back_button))
                         
 
     if callback_id == 0: #Любое значение из списка.
@@ -207,12 +211,12 @@ async def choosing_lexical_topic_handler(callback: CallbackQuery, state: FSMCont
     callback_id = int(callback.data.split("_")[-1])  #Смотрим, что нажато
     show_back_button = True
 
-    print("main parametrs")
-    print(f"level_id {level_id}")
-    print(f"lexical_topic_id {lexical_topic_id}")
-    print(f"recursion_depth {recursion_depth}")
-    print(f"exit_state {exit_state}")
-    print(f"callback_id {callback_id}")
+    #print("main parametrs")
+    #print(f"level_id {level_id}")
+    #print(f"lexical_topic_id {lexical_topic_id}")
+    #print(f"recursion_depth {recursion_depth}")
+    #print(f"exit_state {exit_state}")
+    #print(f"callback_id {callback_id}")
     
     
     if callback_id == -1: 
@@ -232,12 +236,12 @@ async def choosing_lexical_topic_handler(callback: CallbackQuery, state: FSMCont
                         
 
     if callback_id == 0: #Любое значение из списка.
-        print(f"__________recursion_depth________________{lexical_topic_id}")
+        #print(f"__________recursion_depth________________{lexical_topic_id}")
             
         if recursion_depth > 1:        
-            print(f"__________lexical_topic_id________________{lexical_topic_id}")
+         #   print(f"__________lexical_topic_id________________{lexical_topic_id}")
             parent_lexical_id =lexical_topic_id# db.get_patent_lexical_topic_id(lexical_topic_id)
-            print(f"__________parent_lexical_id________________{parent_lexical_id}")
+          #  print(f"__________parent_lexical_id________________{parent_lexical_id}")
         else:
             parent_lexical_id = 0
         await state.update_data(lexical_topic_id = parent_lexical_id , recursion_depth = None)
@@ -261,7 +265,7 @@ async def choosing_lexical_topic_handler(callback: CallbackQuery, state: FSMCont
             await state.update_data(lexical_topic_id = lexical_topic_id , recursion_depth = recursion_depth)
             await callback.message.edit_text("Выберите тему?", reply_markup=kb.lexical_topics_keyboard(topics, True))
  
-        print(f"callback_id {callback_id}")
+      #  print(f"callback_id {callback_id}")
 ####################################################
 #Trainig menu
 ####################################################           
@@ -284,15 +288,28 @@ async def main_training(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
-
+    
     grammar_topic_id = data.get("grammar_topic_id")
     lexical_topic_id = data.get("lexical_topic_id")
     level_id = data.get("level_id")
     user_id = data["user_id"]
-    active_messages = data["active_messages"]
+    active_messages = data["active_messages"]    
+    difficulty_id = data.get("difficulty_id")
+    
+
+    #Проверяем испольованынй лимит по подписке
+
+    if not tr.can_get_question(user_id):
+        subscription = db.get_user_subscription(user_id)
+        await state.set_state(st.MainStates.subscription)
+        await callback.message.edit_text(
+            "На сегодня лимит исчерпан.\n\n"
+            "Вы можете оформить Premium подписку и тренироваться без ораничений.", reply_markup=kb.subscription_subscribe_keyboard(subscription)
+        )
+        return
 
     
-    difficulty_id = data.get("difficulty_id")
+
     if difficulty_id is None:
         difficulty_id = await cl.get_difficlty_id(user_id, state) 
         await state.update_data(difficulty_id = difficulty_id)
@@ -314,8 +331,8 @@ async def main_training_grammar_handler(callback: CallbackQuery, state: FSMConte
     data = await state.get_data()
     level_id = data["level_id"]
     groups = db.get_grammar_topics(parent_id=None,  level_id=level_id)
-    print(level_id)
-    print(groups)
+   # print(level_id)
+   # print(groups)
     await callback.message.edit_text("Что хочешь потренировать?", reply_markup=kb.blitz_groups_keyboard(groups, False))
     await state.set_state(st.MainStates.choosing_grammar_topic)
     await state.update_data(exit_state = st.MainStates.main_menu)
@@ -329,8 +346,8 @@ async def main_training_lexical_handler(callback: CallbackQuery, state: FSMConte
     level_id = data["level_id"]
     groups = db.get_lexical_topics(parent_id=None,  level_id=level_id)
 
-    print(f"level_id {level_id}")
-    print(f"lexical_topics {groups}")
+   # print(f"level_id {level_id}")
+   # print(f"lexical_topics {groups}")
     await callback.message.edit_text("Выберите тему", reply_markup=kb.lexical_topics_keyboard(groups, True))
     await state.set_state(st.MainStates.choosing_lexical_topic)
     await state.update_data(exit_state = st.MainStates.main_menu)

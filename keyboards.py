@@ -175,21 +175,39 @@ def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, 
 def grammar_topics_keyboard(grammar_topics, show_back_button: bool):
     # Первая кнопка — отдельной строкой
     buttons = [[InlineKeyboardButton(text="Любую", callback_data="grammar_topic_0")]]
-
+    print("im here")
     # Кнопки групп
     group_buttons = []
 
     for topic_id, topic_name in grammar_topics:
-        group_buttons.append(InlineKeyboardButton(text=topic_name, callback_data=f"grammar_topic_id_{topic_id}"))
+        #group_buttons.append(InlineKeyboardButton(text=topic_name, callback_data=f"grammar_topic_id_{topic_id}"))
+        group_buttons.append(InlineKeyboardButton(text="123", callback_data=f"grammar_topic_id_{topic_id}"))
 
     # Вывод с группировкой в ряд
-    n = 2 # По n в ряд
+    n =1 # По n в ряд
     for i in range(0, len(group_buttons), n):
         buttons.append(group_buttons[i:i + n])
 
     if show_back_button: buttons.append([InlineKeyboardButton(text="Назад", callback_data="grammar_topic_id_-1")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+ #Выбор грамматической темы
+def grammar_topics_keyboard_new(grammar_topics, show_back_button: bool):
+    # Первая кнопка — отдельной строкой
+    
+    print("im here")
+    buttons = [[InlineKeyboardButton(text="Любую", callback_data="grammar_topic_0")]]
+
+
+    for topic_id, topic_name in grammar_topics:
+        buttons.append([InlineKeyboardButton(text=topic_name, callback_data=f"grammar_topic_id_{topic_id}")])
+
+
+    if show_back_button: buttons.append([InlineKeyboardButton(text="Назад", callback_data="grammar_topic_id_-1")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)   
 
 #Выбор лексической темы
 def lexical_topics_keyboard(lexical_topics, show_back_button: bool):
@@ -323,13 +341,20 @@ def finish_training_keyboard2(button_text):
 #Клавиатуры для подписок
 #########################################
 #Оформить подписку
-def subscription_subscribe_keyboard():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Оформить за 350 руб.", callback_data="subscribe")],
-            [InlineKeyboardButton(text="Назад", callback_data="back")] 
-        ]
-    )
+def subscription_subscribe_keyboard(subcription):
+    if subcription is None:
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="Оформить за 350 руб.", callback_data="subscribe")],
+                [InlineKeyboardButton(text="Назад", callback_data="back")] 
+            ])
+    else:
+        return InlineKeyboardMarkup(
+            inline_keyboard=[              
+                [InlineKeyboardButton(text="Отлично! Давайте тренироваться.", callback_data="back")] 
+            ])
+    
+    
 
 def subscription_cancel_keyboard():
     return InlineKeyboardMarkup(
@@ -342,12 +367,8 @@ def subscription_cancel_keyboard():
 def payment_keyboard(payment_url: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="Оплатить подписку",
-                    url=payment_url
-                )
-            ]
+            [InlineKeyboardButton(text="Оплатить подписку", url=payment_url)],
+            [InlineKeyboardButton(text="Назад", callback_data="back")] 
         ]
     )
 

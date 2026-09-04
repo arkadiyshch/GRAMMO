@@ -10,6 +10,7 @@ import client as cl
 import data.database as db
 import keyboards as kb
 router = Router()
+from aiogram.exceptions import TelegramBadRequest
 
 
 def split_text(text: str, max_length: int = 4000) -> list[str]:
@@ -30,10 +31,12 @@ def split_text(text: str, max_length: int = 4000) -> list[str]:
     return parts
 
 
-async def delete_active_messages(state: FSMContext, author: str | None = None, type: str | None = None):
-    #print("delete_active_messages")
-
-    remaining_messages = [] 
+async def delete_active_messages(
+    state: FSMContext,
+    author: str | None = None,
+    type: str | None = None
+):
+    remaining_messages = []
 
     data = await state.get_data()
     active_messages = data.get("active_messages", [])
@@ -43,11 +46,16 @@ async def delete_active_messages(state: FSMContext, author: str | None = None, t
         type_match = type is None or item.get("type") == type
 
         if author_match and type_match:
-            await item["message"].delete()            
+            try:
+                await item["message"].delete()
+            except TelegramBadRequest:
+                pass
         else:
             remaining_messages.append(item)
 
-    await state.update_data(active_messages=remaining_messages)
+    await state.update_data(
+        active_messages=remaining_messages
+    )
 
 
 async def my_print(state, mes):

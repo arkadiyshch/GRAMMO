@@ -68,14 +68,9 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
         "type": "training_start_mess"
     })
 
-    await state.update_data(
-        active_messages=active_messages
-    )
-
-    await rbf.delete_active_messages(
-        state,
-        type="menu"
-    )
+    await state.update_data(active_messages=active_messages)
+    await rbf.delete_active_messages(state, type="menu")
+    
 
     # --------------------------------------------------
     # 1. СНАЧАЛА ждём БД
@@ -423,19 +418,9 @@ async def show_next_sentence(
 
             return
 
-        # ----------------------------------------------
-        # Ждём окончания генерации
-        # ----------------------------------------------
-
-        print(
-            "Ждём завершения генерации..."
-        )
-
+     
+        print("Ждём завершения генерации...")
         await event.wait()
-
-        # ----------------------------------------------
-        # После генерации снова читаем FSM
-        # ----------------------------------------------
 
         data = await state.get_data()
 
@@ -447,9 +432,11 @@ async def show_next_sentence(
     #Проверяем подписку
 
     if not can_get_question(user_id):
+        subscription = db.get_user_subscription(user_id)
+        await state.set_state(st.MainStates.subscription)
         await message.answer(
-            "Вы использовали 3 бесплатных предложения на сегодня.\n\n"
-            "С Premium количество предложений не ограничено."
+            "На сегодня лимит исчерпан.\n\n"
+            "Вы можете оформить Premium подписку и тренироваться без ораничений.", reply_markup=kb.subscription_subscribe_keyboard(subscription)
         )
         return
 

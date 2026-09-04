@@ -18,6 +18,8 @@ import handlers.routes_base_function as rbf
 from handlers.routes_base_function import my_print
 
 import states as st
+import handlers.menu as menu
+
 router = Router()
 
 #Главное меню - Подипска Входная точка
@@ -28,46 +30,63 @@ async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     data = await state.get_data()
     user_id = data["user_id"]
+    active_messages = data.get("active_messages", [])
+    
 
     await state.set_state(st.MainStates.subscription)
     print(f"state {state}")
     subscription = db.get_user_subscription(user_id=user_id)
 
     print(f"subscription {subscription}")
-    
-    if subscription is None:
-        await callback.message.edit_text(mes.get_user_subscription_mes(subscription), reply_markup=kb.subscription_subscribe_keyboard())
+    await callback.message.edit_text(mes.get_user_subscription_mes(subscription), reply_markup=kb.subscription_subscribe_keyboard(subscription))
 
-    else:
-        await callback.message.edit_text(mes.get_user_subscription_mes(subscription))
 
 @router.message(st.MainStates.email)
-async def process_email(
-    message: Message,
-    state: FSMContext
-):
+async def process_email(message: Message, state: FSMContext):
+    data = await state.get_data()
+    active_messages = data.get("active_messages")
+
     email = message.text.strip()
+    cur_mes = message
+    active_messages.append({
+            "message": cur_mes,
+            "author": "bot",
+            "type": "email"
+        })
+    await state.update_data(active_messages=active_messages)
+    #await rbf.delete_active_messages(state, type="menu")
+
+
 
     if "@" not in email or "." not in email:
-        await message.answer(
-            "Введите корректный email:"
-        )
+        await rbf.delete_active_messages(state, type="email")
+        cur_mes = await message.answer("Введите корректный email:")
+        active_messages.append({
+                    "message": cur_mes,
+                    "author": "bot",
+                    "type": "email"
+                })
+        await state.update_data(active_messages=active_messages)
         return
 
     data = await state.get_data()
     user_id = data["user_id"]
 
-    db.update_user_email(
-        user_id=user_id,
-        email=email
-    )
-
+    db.update_user_email(user_id=user_id, email=email)
+    await rbf.delete_active_messages(state, type="email")
     await state.set_state(st.MainStates.subscription)
 
-    await message.answer(
-        f"Email для чека:\n{email}",
-        reply_markup=kb.subscription_payment_keyboard()
-    )
+    
+    cur_mes = await message.answer(f"Email для чека:\n{email}",reply_markup=kb.subscription_payment_keyboard())
+
+    active_messages.append({
+        "message": cur_mes,
+        "author": "bot",
+        "type": "email"
+    })
+    await state.update_data(active_messages=active_messages)
+   
+
 
 @router.callback_query(st.MainStates.subscription, F.data == "subscribe")
 async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
@@ -79,6 +98,7 @@ async def user_subscription(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
     user_id = data["user_id"]
+    active_messages = data.get("active_messages")
 
     email = db.get_user_email(user_id)
 
@@ -90,10 +110,15 @@ async def user_subscription(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-    await callback.message.answer(
-        f"Email для чека:\n{email}",
-        reply_markup=kb.subscription_payment_keyboard()
-    )
+    cur_mes = await callback.message.answer(f"Email для чека:\n{email}",reply_markup=kb.subscription_payment_keyboard())
+    
+    active_messages.append({
+        "message": cur_mes,
+        "author": "bot",
+        "type": "email"
+    })
+    await state.update_data(active_messages=active_messages)
+
 
 @router.callback_query(st.MainStates.subscription, F.data == "pay_premium")
 async def pay_premium_handler(callback: CallbackQuery, state: FSMContext):
@@ -114,6 +139,7 @@ async def pay_premium_handler(callback: CallbackQuery, state: FSMContext):
 
     payment = payments.create_payment(user_id=user_id,email=email)
 
+    print("state:", await state.get_state())
     await callback.message.answer("Для оплаты подписки нажмите кнопку ниже:",
         reply_markup=kb.payment_keyboard(payment["confirmation_url"])       
     )
@@ -123,9 +149,39 @@ async def pay_premium_handler(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(st.MainStates.subscription, F.data == "change_email")
 async def change_email_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+    data = await state.get_data()
+    active_messages = data.get("active_messages")
 
     await state.set_state(st.MainStates.email)
 
-    await callback.message.answer(
-        "Введите новый email для оформления чека:"
-    )
+    cur_mes = await callback.message.answer("Введите новый email для оформления чека:")
+    active_messages.append({
+                "message": cur_mes,
+                "author": "bot",
+                "type": "email"
+            })
+    await state.update_data(active_messages=active_messages)
+
+
+#Возврат в главное меню из подписки
+@router.callback_query(st.MainStates.subscription, F.data == "back")
+async def subscription_back_handler(callback: CallbackQuery, state: FSMContext):
+    await subscription_back(callback, state)
+
+#Возврат в главное меню из подписки
+@router.callback_query(st.MainStates.main_menu, F.data == "back")
+async def subscription_back_handler(callback: CallbackQuery, state: FSMContext):
+    await subscription_back(callback, state)
+
+
+async def subscription_back(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    data = await state.get_data()
+    user_id = data["user_id"]  
+
+    await state.set_state(st.MainStates.main_menu)
+    rbf.delete_active_messages(state, author="user")
+    rbf.delete_active_messages(state, author="bot")
+    await callback.message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(user_id))
+    
