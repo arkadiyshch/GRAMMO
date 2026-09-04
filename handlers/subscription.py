@@ -70,10 +70,11 @@ async def process_email(
     )
 
 @router.callback_query(st.MainStates.subscription, F.data == "subscribe")
-async def user_subscription_handler(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
+    await user_subscription(callback, state)
+
+
+async def user_subscription(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     data = await state.get_data()
@@ -114,18 +115,13 @@ async def pay_premium_handler(callback: CallbackQuery, state: FSMContext):
     payment = payments.create_payment(user_id=user_id,email=email)
 
     await callback.message.answer("Для оплаты подписки нажмите кнопку ниже:",
-        reply_markup=kb.payment_keyboard(payment["confirmation_url"])
+        reply_markup=kb.payment_keyboard(payment["confirmation_url"])       
     )
+    await state.set_state(st.MainStates.main_menu)
 
 
-@router.callback_query(
-    st.MainStates.subscription,
-    F.data == "change_email"
-)
-async def change_email_handler(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+@router.callback_query(st.MainStates.subscription, F.data == "change_email")
+async def change_email_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
     await state.set_state(st.MainStates.email)

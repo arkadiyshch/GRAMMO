@@ -11,6 +11,7 @@ import data.database as db
 import keyboards as kb
 import json
 import asyncio
+import handlers.subscription as sub
 
 from aiogram.exceptions import TelegramBadRequest
 import handlers.routes_base_function as rbf
@@ -23,10 +24,8 @@ TOTAL_QUESTIONS = 10
 import prompts as p
 generation_events = {}
 
-async def tarining_start(
-    callback: CallbackQuery,
-    state: FSMContext
-):
+
+async def tarining_start(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
@@ -39,25 +38,19 @@ async def tarining_start(
     active_messages = data.get("active_messages", [])
 
     # --------------------------------------------------
-    # Количество предложений
+    # Общее количество предложений
     # --------------------------------------------------
 
     total_sentences = 3 if welcome_mode else TOTAL_QUESTIONS
 
     await state.update_data(
         current_sentence=0,
-        total_sentence=total_sentences
-    )
-
-    # --------------------------------------------------
-    # Создаём Event для этой тренировки
-    # --------------------------------------------------
-
-    generation_events[user_id] = asyncio.Event()
-
-    await state.update_data(
+        total_sentence=total_sentences,
         generation_finished=False
     )
+
+    # Event для конкретного пользователя
+    generation_events[user_id] = asyncio.Event()
 
     # --------------------------------------------------
     # Сообщение о начале тренировки
@@ -85,129 +78,130 @@ async def tarining_start(
     )
 
     # --------------------------------------------------
-    # Сколько пытаемся взять из БД
+    # 1. СНАЧАЛА ждём БД
     # --------------------------------------------------
 
-    DB_SENTENCES = 3
+    DB_MAX_SENTENCES = 3
 
-    db_count = min(
-        DB_SENTENCES,
-        total_sentences
+    db_sentences = await load_sentences_from_db(
+        user_id=user_id,
+        level_id=level_id,
+        grammar_topic_id=grammar_topic_id,
+        lexical_topic_id=lexical_topic_id,
+        difficulty_id=difficulty_id,
+        count=min(DB_MAX_SENTENCES, total_sentences)
     )
 
-    generate_count = (
-        total_sentences - db_count
-    )
-
-    # --------------------------------------------------
-    # Запускаем загрузку БД
-    # --------------------------------------------------
-
-    db_task = asyncio.create_task(
-        load_sentences_from_db(
-            user_id=user_id,
-            level_id=level_id,
-            grammar_topic_id=grammar_topic_id,
-            lexical_topic_id=lexical_topic_id,
-            difficulty_id=difficulty_id,
-            count=db_count
-        )
-    )
-
-    # --------------------------------------------------
-    # Параллельно запускаем AI
-    # --------------------------------------------------
-
-    generation_task = None
-
-    if generate_count > 0:
-
-        prompt = await p.get_sentences_prompt(
-            user_id=user_id,
-            level_id=level_id,
-            difficulty=difficulty_id,
-            grammar_topic_id=grammar_topic_id,
-            lexical_topic_id=lexical_topic_id,
-            sentence_count=generate_count,
-            welcome_mode=welcome_mode
-        )
-
-        generation_task = asyncio.create_task(
-            cl.generate_sentences(prompt)
-        )
-
-    # --------------------------------------------------
-    # Ждём БД
-    # --------------------------------------------------
-
-    db_sentences = await db_task
-
-    sentences_count = len(
-        db_sentences["sentences"]
+    db_count = len(
+        db_sentences.get("sentences", [])
     )
 
     print(
-        f"Из БД получено предложений: {sentences_count}"
+        f"БД вернула {db_count} предложений "
+        f"из необходимых {total_sentences}"
     )
 
     # --------------------------------------------------
-    # БД вернула предложения
+    # 2. Считаем, сколько нужно сгенерировать
     # --------------------------------------------------
 
-    if sentences_count > 0:
+    generate_count = total_sentences - db_count
+
+    print(
+        f"Нужно сгенерировать: {generate_count}"
+    )
+
+    # --------------------------------------------------
+    # Сохраняем предложения из БД в FSM
+    # --------------------------------------------------
+
+    await state.update_data(
+        sentences=db_sentences
+    )
+
+    # --------------------------------------------------
+    # 3. Если БД уже дала всё — AI не нужен
+    # --------------------------------------------------
+
+    if generate_count == 0:
 
         await state.update_data(
-            sentences=db_sentences
+            generation_finished=True
         )
 
-        # Сразу начинаем тренировку
+        generation_events[user_id].set()
+
         await show_next_sentence(
             callback.message,
             state
         )
 
-        # --------------------------------------------------
-        # AI продолжает генерировать в фоне
-        # --------------------------------------------------
+        return
 
-        if generation_task is not None:
+    # --------------------------------------------------
+    # 4. Формируем prompt только сейчас
+    # --------------------------------------------------
 
-            asyncio.create_task(
-                finish_sentence_generation(
-                    generation_task=generation_task,
-                    state=state,
-                    user_id=user_id,
-                    level_id=level_id,
-                    grammar_topic_id=grammar_topic_id,
-                    lexical_topic_id=lexical_topic_id,
-                    difficulty_id=difficulty_id
-                )
-            )
+    prompt = await p.get_sentences_prompt(
+        user_id=user_id,
+        level_id=level_id,
+        difficulty=difficulty_id,
+        grammar_topic_id=grammar_topic_id,
+        lexical_topic_id=lexical_topic_id,
+        sentence_count=generate_count,
+        welcome_mode=welcome_mode
+    )
+
+    # --------------------------------------------------
+    # 5. Запускаем AI в фоне
+    # --------------------------------------------------
+
+    generation_task = asyncio.create_task(
+        cl.generate_sentences(prompt)
+    )
+
+    # --------------------------------------------------
+    # 6. Запускаем обработчик генерации в фоне
+    # --------------------------------------------------
+
+    asyncio.create_task(
+        finish_sentence_generation(
+            generation_task=generation_task,
+            state=state,
+            user_id=user_id,
+            level_id=level_id,
+            grammar_topic_id=grammar_topic_id,
+            lexical_topic_id=lexical_topic_id,
+            difficulty_id=difficulty_id
+        )
+    )
+
+    # --------------------------------------------------
+    # 7. Если БД что-то дала — сразу начинаем тренировку
+    # --------------------------------------------------
+
+    if db_count > 0:
+
+        await show_next_sentence(
+            callback.message,
+            state
+        )
 
         return
 
     # --------------------------------------------------
-    # БД ничего не вернула
+    # 8. БД ничего не дала
+    #
+    # AI уже запущен в фоне.
+    # Ждём его завершения.
     # --------------------------------------------------
 
     print(
-        "В БД нет подходящих предложений. "
-        "Ждём AI."
+        "БД не вернула предложений. "
+        "Ожидаем генерацию AI."
     )
 
-    if generation_task is None:
-        print("Нет задачи генерации AI")
-        return
-
-    await finish_sentence_generation(
-        generation_task=generation_task,
-        state=state,
-        user_id=user_id,
-        level_id=level_id,
-        grammar_topic_id=grammar_topic_id,
-        lexical_topic_id=lexical_topic_id,
-        difficulty_id=difficulty_id
-    )
+    await generation_events[user_id].wait()
 
     await show_next_sentence(
         callback.message,
@@ -324,56 +318,6 @@ async def finish_sentence_generation(
             f"для user_id={user_id}"
         )
 
-# Не удалять, пока не отладится новая функция
-async def tarining_start_old(callback: CallbackQuery, state: FSMContext):
-    
-
-    data = await state.get_data()
-    level_id = data.get("level_id")
-    user_id = data.get("user_id")
-    grammar_topic_id =  data.get("grammar_topic_id")
-    lexical_topic_id =  data.get("lexical_topic_id")
-    difficulty_id = data.get("difficulty_id")
-    welcome_mode = data.get("welcome_mode")
-    active_messages = data.get("active_messages")
-
-
-    sentece_cont = TOTAL_QUESTIONS
-    if welcome_mode:sentece_cont = 3
-    
-
-    await state.update_data(current_sentence = 0, total_sentence = sentece_cont)
-    #await rbf.delete_active_messages(state, type="menu")
-
-    # Приветствие
-    print (f"active_messages {len(active_messages)}, {active_messages}")
-    
-    cur_mes =  await callback.message.answer(
-            f"Начинаем тренировку!\n\n"
-            f"Задания скоро появятся. Всего их будет: {sentece_cont}\n"
-            f"Отправляйте перевод прямо в чат."
-    )   
-    active_messages.append({
-                "message" : cur_mes,
-                "author": "bot",
-                "type": "training_start_mess"
-    })   
-
-    #print(active_messages)
-    await rbf.delete_active_messages(state, type="menu")
-
-
-
-    await state.update_data(active_messages=active_messages)
-    
-    prompt = await p.get_sentences_prompt(user_id=user_id, level_id=level_id, difficulty=difficulty_id, grammar_topic_id=grammar_topic_id, lexical_topic_id=lexical_topic_id,  sentence_count= sentece_cont, welcome_mode = welcome_mode)
-    sentences = await cl.generate_sentences(prompt)
-    
-    sentences_JSON = json.loads(sentences)
-    save_sentences(sentences_data=sentences_JSON, level_id=level_id, grammar_topic_id=grammar_topic_id, lexical_topic_id=lexical_topic_id, difficulty_id=difficulty_id, sentence_type=0)
-
-    await state.update_data(sentences = sentences_JSON)        
-    await show_next_sentence(callback.message, state)
 
 
 async def load_sentences_from_db(
@@ -578,23 +522,13 @@ async def training_answer_handler(message: Message, state: FSMContext):
     # Сохраняем ответ в state
     ai_result = await cl.check_answer(russian_sentence=question, user_answer=user_answer)
     ai_result_text =  json.dumps(ai_result, ensure_ascii=False)
-    sentences['sentences'][current_sentence]["answer"] = user_answer
-    sentences['sentences'][current_sentence]["ai_result"] = ai_result
+    sentences['sentences'][current_sentence-1]["answer"] = user_answer
+    sentences['sentences'][current_sentence-1]["ai_result"] = ai_result
     await db.save_ai_answer(user_answer_id = user_unswer_id, ai_answer_text =ai_result_text)
-        
+    print(sentences)    
     
     await state.update_data(sentences=sentences)
     
-    #db.save_user_answer(
-    #    user_id=message.from_user.id,
-    #    sentence_id=question_id,
-    #   user_answer=user_answer,
-    #    ai_answer = json.dumps(
-    #            ai_result,
-    #            ensure_ascii=False
-    #        )
-    #)
-
     cur_mes = await message.answer(cl.format_check_result(ai_result),reply_markup=kb.next_sentence_keyboard())
     active_messages.append({
                             "message" : cur_mes,
@@ -758,24 +692,14 @@ async def onboard_pay_handler(callback: CallbackQuery, state: FSMContext):
     print(f"fdata: {fdata}")
 
     if fdata == "onboard_pay":
-
-        cur_mes = await callback.message.answer(
-            "Поздравляем с успешным оформлением подписки. "
-            "Желаем хорошей тренировки.",
-            reply_markup=kb.finish_training_keyboard2(
-                "Отлично, спасибо :)"
-            )
-        )
+        await state.set_state(st.MainStates.subscription)
+        await sub.user_subscription(callback, state)
 
     elif fdata == "onboard_free":
 
         cur_mes = await callback.message.answer(
             "Хорошо. Вы всегда сможете подключить полный доступ позже.",
-            reply_markup=kb.finish_training_keyboard2(
-                "Хорошо, спасибо"
-            )
-        )
-
+            reply_markup=kb.finish_training_keyboard2("Хорошо, спасибо"))
     else:
         return
 

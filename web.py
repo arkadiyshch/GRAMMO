@@ -47,6 +47,13 @@ async def yookassa_webhook(request: Request):
             #Возврат в главное меню
             user_id = result["user_id"]
 
+            res = f"Теперь у вас Premium подписка\n\nБольше нет ограничений не объём тренировок и выбор грамматических тем."            
+            await bot.send_message(
+                            chat_id=user_id,
+                            text=res                        
+                        )
+                        
+            
             await bot.send_message(
                 chat_id=user_id,
                 text="Оплата прошла успешно.\n\nГлавное меню",
