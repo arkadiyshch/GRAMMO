@@ -176,7 +176,9 @@ def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, 
 #Выбор грамматической темы
 def grammar_topics_keyboard(grammar_topics, show_back_button: bool):
     # Первая кнопка — отдельной строкой
-    buttons = [[InlineKeyboardButton(text="Любая тему", callback_data="grammar_topic_0")]]
+    #buttons = [[InlineKeyboardButton(text="Любая тема", callback_data="grammar_topic_0")]]
+    buttons = []
+    
     print("im here")
     # Кнопки групп
     group_buttons = []
@@ -193,7 +195,7 @@ def grammar_topics_keyboard(grammar_topics, show_back_button: bool):
     for i in range(0, len(group_buttons), n):
         buttons.append(group_buttons[i:i + n])
 
-    if show_back_button: buttons.append([InlineKeyboardButton(text="Назад", callback_data="grammar_topic_id_-1")])
+    #if show_back_button: buttons.append([InlineKeyboardButton(text="Назад", callback_data="grammar_topic_id_-1")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

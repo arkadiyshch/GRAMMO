@@ -34,10 +34,7 @@ async def user_subscription_handler(callback: CallbackQuery, state: FSMContext):
     
 
     await state.set_state(st.MainStates.subscription)
-    print(f"state {state}")
     subscription = db.get_user_subscription(user_id=user_id)
-
-    print(f"subscription {subscription}")
     await callback.message.edit_text(mes.get_user_subscription_mes(subscription), reply_markup=kb.subscription_subscribe_keyboard(subscription))
 
 
