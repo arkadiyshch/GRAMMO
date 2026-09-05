@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime, timedelta
+import json
 
 
 
@@ -11,9 +12,7 @@ def get_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
-
 def create_tables():
-    #print("start_create_tables")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -25,7 +24,8 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL UNIQUE,
-            user_name TEXT
+            user_name TEXT,
+            email TEXT
         )
     """)
 
@@ -33,7 +33,6 @@ def create_tables():
     # LEVELS
     # ============================================================
 
-    #print("create_levels")
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS levels (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,7 +70,7 @@ def create_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             parent_id INTEGER,
-            level_id INTEGER NOT NULL,
+            level_id INTEGER,
 
             FOREIGN KEY (parent_id)
                 REFERENCES grammar_topics(id),
@@ -82,18 +81,74 @@ def create_tables():
     """)
 
     # ============================================================
+    # DIFFICULTY
+    # Сложности
+    # ============================================================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS difficulty (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            description_short TEXT
+        )
+    """)
+
+    # ============================================================
+    # SUBSCRIPTIONS
+    # Виды подписок
+    # ============================================================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            price INTEGER NOT NULL DEFAULT 0,
+            period_months INTEGER,
+            daily_limit INTEGER
+        )
+    """)
+
+    # ============================================================
+    # LEXICAL TOPICS
+    # Лексические темы
+    # ============================================================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS lexical_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            parent_id INTEGER,
+            level_from INTEGER NOT NULL,
+            subscription_id INTEGER NOT NULL DEFAULT 1,
+
+            FOREIGN KEY (parent_id)
+                REFERENCES lexical_topics(id),
+
+            FOREIGN KEY (level_from)
+                REFERENCES levels(id),
+
+            FOREIGN KEY (subscription_id)
+                REFERENCES subscriptions(id)
+        )
+    """)
+
+    # ============================================================
     # SENTENCES
     # ============================================================
 
     cursor.execute("""
-       CREATE TABLE IF NOT EXISTS sentences (
+        CREATE TABLE IF NOT EXISTS sentences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sentence TEXT NOT NULL,
             level_id INTEGER NOT NULL,
             grammar_topic_id INTEGER,
             lexical_topic_id INTEGER,
-            difficulty_id INTEGER NOT NULL,
+            difficulty_id INTEGER,
             type INTEGER NOT NULL DEFAULT 0,
+            tips TEXT,
+            translation TEXT,
 
             FOREIGN KEY (level_id)
                 REFERENCES levels(id),
@@ -105,16 +160,43 @@ def create_tables():
                 REFERENCES lexical_topics(id),
 
             FOREIGN KEY (difficulty_id)
-                REFERENCES difficultу(id)
+                REFERENCES difficulty(id)
         )
     """)
 
     # ============================================================
-    # SUBSCRIPTIONS
+    # PAYMENTS
     # ============================================================
 
     cursor.execute("""
-       CREATE TABLE IF NOT EXISTS user_subscriptions (
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            subscription_id INTEGER NOT NULL,
+            yookassa_payment_id TEXT NOT NULL UNIQUE,
+
+            amount INTEGER NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'RUB',
+
+            status TEXT NOT NULL,
+
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            paid_at TEXT,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(user_id),
+
+            FOREIGN KEY (subscription_id)
+                REFERENCES subscriptions(id)
+        )
+    """)
+
+    # ============================================================
+    # USER SUBSCRIPTIONS
+    # ============================================================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_subscriptions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
             user_id INTEGER NOT NULL,
@@ -137,7 +219,27 @@ def create_tables():
         )
     """)
 
-   
+    # ============================================================
+    # USER ANSWERS
+    # История ответов
+    # ============================================================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_answers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sentence_id INTEGER NOT NULL,
+            user_answer TEXT,
+            ai_answer TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(user_id),
+
+            FOREIGN KEY (sentence_id)
+                REFERENCES sentences(id)
+        )
+    """)
 
     # ============================================================
     # USER ERRORS
@@ -163,110 +265,25 @@ def create_tables():
         )
     """)
 
-   # ============================================================
-      # USER ANSWERS
-      # История ответов
-      # ============================================================
+    # ============================================================
+    # USER DIFFICULTY
+    # Сложность по пользователям
+    # ============================================================
+
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_answers (
+        CREATE TABLE IF NOT EXISTS user_difficulty (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            sentence_id INTEGER NOT NULL,
-            user_answer TEXT,
-            ai_answer TEXT,
+            difficulty_id INTEGER NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
             FOREIGN KEY (user_id)
                 REFERENCES users(user_id),
 
-            FOREIGN KEY (sentence_id)
-                REFERENCES sentences(id)
-        )
-            
-        """)
-
-    # ============================================================
-    #lexical_topics
-    # Лексические темы
-    # ============================================================
-    cursor.execute("""
-       CREATE TABLE  IF NOT EXISTS lexical_topics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            parent_id INTEGER,
-            level_form INTEGER NOT NULL,
-          
-            FOREIGN KEY (parent_id) REFERENCES lexical_topics(id),
-            FOREIGN KEY (level_from) REFERENCES levels(id)
-        )
-        """)
-
-    # ============================================================
-    #Сложности 
-    #
-    # ============================================================
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS difficulty (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT
+            FOREIGN KEY (difficulty_id)
+                REFERENCES difficulty(id)
         )
     """)
-    
-    # ============================================================
-    #Сложности по пользователям
-    #
-    # ============================================================
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_difficulty (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    difficulty_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    FOREIGN KEY (difficulty_id) REFERENCES difficulty(id)
-        )
-    """)
-
-        # ============================================================
-        #Виды Подипсок
-        #
-        # ============================================================
-    cursor.execute("""
-           CREATE TABLE IF NOT EXISTS subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code TEXT NOT NULL UNIQUE,
-                name TEXT NOT NULL,
-                price INTEGER NOT NULL DEFAULT 0,
-                period_months INTEGER,
-                daily_limit INTEGER
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS  payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            user_id INTEGER NOT NULL,
-            subscription_id INTEGER NOT NULL,
-            yookassa_payment_id TEXT NOT NULL UNIQUE, 
-
-            amount INTEGER NOT NULL,
-            currency TEXT NOT NULL DEFAULT 'RUB',
-
-            status TEXT NOT NULL,
-
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            paid_at TEXT,
-
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
-        )
-        """)
-
-
-
 
     # ============================================================
     # СОХРАНЯЕМ
@@ -516,7 +533,7 @@ def seed_grammar_topics():
     print("Грамматические темы добавлены.")
 
 #Получаем список грамматических тем
-def get_grammar_topics(parent_id:int | None, level_id: int):
+def get_grammar_topics_old(parent_id:int | None, level_id: int):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -543,6 +560,38 @@ def get_grammar_topics(parent_id:int | None, level_id: int):
     print(topics)
     conn.close()
     return topics
+
+
+#Получаем список грамматических тем
+def get_grammar_topics(parent_id:int | None, level_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    print(parent_id)
+    if parent_id is None:
+        query = """
+                SELECT id, name
+                FROM grammar_topics
+                WHERE parent_id is NULL
+                """
+        #params = (level_id,) 
+        #cursor.execute(query, params)
+        cursor.execute(query)
+    else:    
+        query = """
+            SELECT id, name
+            FROM grammar_topics
+            WHERE parent_id = ?
+        """
+        params = (parent_id,)   
+        cursor.execute(query, params)
+
+    print(query)
+    topics = cursor.fetchall()
+    print(topics)
+    conn.close()
+    return topics
+
 
 #Получаем список лексических тем
 def get_lexical_topics(parent_id:int | None, level_id: int):
@@ -589,6 +638,54 @@ def get_parent_grammar_topic_id(topic_id: int):
     topics = cursor.fetchall()[0][0]
     conn.close()
     return topics
+
+
+#Случайная гр. тема
+def get_grammar_topic_level_id(grammar_topic_id: int) -> int:
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+    SELECT level_id
+    FROM grammar_topics
+    WHERE id = ?    
+    ORDER BY RANDOM()
+    LIMIT 1
+    """
+
+    params = (grammar_topic_id,)
+
+    cursor.execute(query, params)
+    topic = cursor.fetchone()[0]
+
+    conn.close()
+
+    return topic
+
+#Случайная гр. тема
+def get_random_grammar_topic_2(parent_id: int, level_id: int) -> int:
+    print(f"Поиск случайной темы: parent_id={parent_id}, level_id={level_id}")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+    SELECT id
+    FROM grammar_topics
+    WHERE parent_id = ?    
+    ORDER BY RANDOM()
+    LIMIT 1
+    """
+
+    params = (parent_id,)
+
+    cursor.execute(query, params)
+    topic = cursor.fetchone()[0]
+
+    conn.close()
+
+    return topic
 
 #Получаем список тем
 def get_parent_lexical_topic_id(topic_id: int):
@@ -672,6 +769,8 @@ def get_unused_sentence_old(
 
 def save_sentence(
     sentence: str,
+    translation: str,
+    tips: str,
     level_id: int,
     grammar_topic_id: int | None,
     lexical_topic_id: int | None,
@@ -681,18 +780,23 @@ def save_sentence(
     conn = get_connection()
     cursor = conn.cursor()
 
+    print("saving sentence:", sentence, translation, tips, level_id, grammar_topic_id, lexical_topic_id, difficulty_id, sentence_type)
     cursor.execute("""
         INSERT INTO sentences (
             sentence,
+            translation,
+            tips,
             level_id,
             grammar_topic_id,
             lexical_topic_id,
             difficulty_id,
             type
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         sentence,
+        translation,
+        tips,
         level_id,
         grammar_topic_id,
         lexical_topic_id,
@@ -753,7 +857,7 @@ def get_random_grammar_topic():
 
     conn.close()
 
-    return topic
+    return topic[0]
 
 def add_sentence(sentence: str, level_id: int, topic_id: int, type: int = 0):
     conn = get_connection()

@@ -14,7 +14,7 @@ def diagnostic_level_keyboard():
     ])
     return keyboard
 
-def blitz_groups_keyboard(groups):
+def blitz_groups_keyboard_(groups):
     buttons = []
 
     # Свободная тема
@@ -115,15 +115,17 @@ def user_level_keyboard():
 def blitz_groups_keyboard(groups, welcome_mode):
 
     # Первая кнопка — отдельной строкой
-    buttons = [[InlineKeyboardButton(text="Что угодно", callback_data="grammar_group_id_0")]]
+    buttons = []#[[InlineKeyboardButton(text="Что угодно", callback_data="grammar_group_id_0")]]
 
     # Кнопки групп
     group_buttons = []
 
     for group_id, group_name in groups:
-        group_buttons.append(InlineKeyboardButton(text=group_name, callback_data=f"grammar_group_id_{group_id}")        )
+        #text = group_name.ljust(40, "\u2800")
+        text = group_name
+        group_buttons.append(InlineKeyboardButton(text=text, callback_data=f"grammar_group_id_{group_id}")        )
 
-    n = 2 # Кнопок в ряд
+    n = 1 # Кнопок в ряд
     for i in range(0, len(group_buttons), n):
         buttons.append(group_buttons[i:i + n])
 
@@ -164,7 +166,7 @@ def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, 
     buttons = [
         [InlineKeyboardButton(text="-->> НАЧАТЬ ТРЕНИРОВКУ <<-- ", callback_data="training_start")],
         [InlineKeyboardButton(text=f"Грамматика: {grammar_topic_name}", callback_data="training_grammar_topic")],
-        [InlineKeyboardButton(text=f"Лексика: {lexical_topic_name}", callback_data="training_lexical_topic")],
+     #   [InlineKeyboardButton(text=f"Лексика: {lexical_topic_name}", callback_data="training_lexical_topic")],
         [InlineKeyboardButton(text=f"Сложность: {difficultyu_name}", callback_data="training_difficulty")],
         [InlineKeyboardButton(text="Назад", callback_data="training_back_to_main_menu")]      
     ]
@@ -174,14 +176,17 @@ def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, 
 #Выбор грамматической темы
 def grammar_topics_keyboard(grammar_topics, show_back_button: bool):
     # Первая кнопка — отдельной строкой
-    buttons = [[InlineKeyboardButton(text="Любую", callback_data="grammar_topic_0")]]
+    buttons = [[InlineKeyboardButton(text="Любая тему", callback_data="grammar_topic_0")]]
     print("im here")
     # Кнопки групп
     group_buttons = []
 
     for topic_id, topic_name in grammar_topics:
-        #group_buttons.append(InlineKeyboardButton(text=topic_name, callback_data=f"grammar_topic_id_{topic_id}"))
-        group_buttons.append(InlineKeyboardButton(text="123", callback_data=f"grammar_topic_id_{topic_id}"))
+        topic_level_id = db.get_grammar_topic_level_id(topic_id)
+        topic_level_name = db.get_level_name(topic_level_id)
+        topic_name_with_level = topic_level_name + " - " + topic_name
+        group_buttons.append(InlineKeyboardButton(text=topic_name_with_level, callback_data=f"grammar_topic_id_{topic_id}"))
+        #group_buttons.append(InlineKeyboardButton(text="123", callback_data=f"grammar_topic_id_{topic_id}"))
 
     # Вывод с группировкой в ряд
     n =1 # По n в ряд

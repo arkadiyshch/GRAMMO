@@ -18,6 +18,7 @@ import handlers.routes_base_function as rbf
 from handlers.routes_base_function import my_print
 
 import states as st
+import traceback
 router = Router()
 
 TOTAL_QUESTIONS = 10
@@ -43,11 +44,11 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
 
     total_sentences = 3 if welcome_mode else TOTAL_QUESTIONS
 
-    await state.update_data(
-        current_sentence=0,
-        total_sentence=total_sentences,
-        generation_finished=False
-    )
+    if grammar_topic_id is None:
+        grammar_topic_id = db.get_random_grammar_topic()
+
+    await state.update_data(current_sentence=0,  total_sentence=total_sentences, generation_finished=False)
+    await state.update_data(grammar_topic_id=grammar_topic_id)
 
     # Event для конкретного пользователя
     generation_events[user_id] = asyncio.Event()
@@ -55,11 +56,21 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
     # --------------------------------------------------
     # Сообщение о начале тренировки
     # --------------------------------------------------
+    grammar_topic_parant_id = db.get_parent_grammar_topic_id(grammar_topic_id)
+    if grammar_topic_parant_id is None:
+        grammar_topic_parant_name = ""
+    else:
+        grammar_topic_parant_name = db.get_grammar_topic_name(grammar_topic_parant_id) + " --> "
 
+    grammar_topic_parant_id = ""     
+    grammar_topic_name = db.get_grammar_topic_name(grammar_topic_id)
+    
     cur_mes = await callback.message.answer(
-        f"Начинаем тренировку!\n\n"
-        f"Заданий будет: {total_sentences}\n"
-        f"Отправляйте перевод прямо в чат."
+        f"Начинаем тренировку по теме:\n"
+        f"{grammar_topic_parant_name + grammar_topic_name }\n\n"
+        f"Будет: {total_sentences} заданий\n"
+        f"Отправляйте перевод прямо в чат.\n"
+        f"Задания генерируются, пожалуйста подождите..."
     )
 
     active_messages.append({
@@ -215,32 +226,24 @@ async def finish_sentence_generation(
 
     try:
 
-        # --------------------------------------------------
-        # Ждём AI
-        # --------------------------------------------------
-
         generated = await generation_task
-
         print("AI генерация закончена")
 
-        generated_json = json.loads(
-            generated
-        )
+        generated_json = json.loads(generated)
 
-        generated_sentences = generated_json.get(
-            "sentences",
-            []
-        )
+        print(f"AI сгенерировал: {generated_json} ")
+        generated_sentences = generated_json.get("sentences", [])
 
-        #print(
-        #    f"AI сгенерировал: "
-        #    f"{len(generated_sentences)}"
-        #)
+        print(
+            f"AI сгенерировал: "
+            f"{len(generated_sentences)}"
+        )
 
         # --------------------------------------------------
         # Сохраняем в БД
         # --------------------------------------------------
 
+        print("before save_sentences:")
         save_sentences(
             sentences_data=generated_json,
             level_id=level_id,
@@ -263,22 +266,8 @@ async def finish_sentence_generation(
             }
         )
 
-        # --------------------------------------------------
-        # Добавляем AI-предложения
-        # --------------------------------------------------
-
-        sentences["sentences"].extend(
-            generated_sentences
-        )
-
-        # --------------------------------------------------
-        # Обновляем FSM
-        # --------------------------------------------------
-
-        await state.update_data(
-            sentences=sentences,
-            generation_finished=True
-        )
+        sentences["sentences"].extend(generated_sentences)
+        await state.update_data(sentences=sentences, generation_finished=True)
 
         print(
             f"Всего теперь доступно: "
@@ -287,13 +276,12 @@ async def finish_sentence_generation(
 
     except Exception as e:
 
-        print(
-            f"Ошибка фоновой генерации: {e}"
-        )
+        print("Ошибка фоновой генерации: {e}")
+        print(f"Тип ошибки: {type(e).__name__}")
+        print(f"Сообщение: {e}")
+        traceback.print_exc()
 
-        await state.update_data(
-            generation_finished=True
-        )
+        await state.update_data(generation_finished=True)
 
     finally:
 
@@ -363,10 +351,7 @@ def make_progress_bar(current: int, total: int, length: int = 20) -> str:
         f"{'█' * filled}{'░' * empty}  {current}/{total}"
     )
 
-async def show_next_sentence(
-    message: Message,
-    state: FSMContext
-):
+async def show_next_sentence(message: Message, state: FSMContext):
     data = await state.get_data()
 
     current_sentence = data.get("current_sentence", 0)
@@ -412,9 +397,7 @@ async def show_next_sentence(
                 f"для user_id={user_id}"
             )
 
-            await message.answer(
-                "Не удалось подготовить следующее задание."
-            )
+            await message.answer("Не удалось подготовить следующее задание.")
 
             return
 
@@ -430,7 +413,6 @@ async def show_next_sentence(
         )
 
     #Проверяем подписку
-
     if not can_get_question(user_id):
         subscription = db.get_user_subscription(user_id)
         await state.set_state(st.MainStates.subscription)
@@ -445,9 +427,6 @@ async def show_next_sentence(
     # --------------------------------------------------
     # Получаем предложение
     # --------------------------------------------------
-
-
-
 
     sentence_data = sentences["sentences"][next_sentence_number - 1]
 
@@ -486,6 +465,15 @@ async def show_next_sentence(
 async def training_answer_handler(message: Message, state: FSMContext):
     data = await state.get_data()
     user_id = data["user_id"]
+    grammar_topic_id = data["grammar_topic_id"]
+    grammar_topic_name = db.get_grammar_topic_name(grammar_topic_id)
+    grammar_parant_topic_id = db.get_parent_grammar_topic_id(grammar_topic_id)
+    if grammar_parant_topic_id is None:
+        grammar_parant_topic_name = ""
+    else:
+        grammar_parant_topic_name = db.get_grammar_topic_name(grammar_parant_topic_id) + " --> "
+
+    grammar_parant_topic_name = db.get_grammar_topic_name(grammar_parant_topic_id) if grammar_parant_topic_id else ""
     sentences = data["sentences"]        
     current_sentence = data["current_sentence"]
     total_sentence =data.get("total_sentence") 
@@ -505,9 +493,12 @@ async def training_answer_handler(message: Message, state: FSMContext):
     await db.save_user_answer(user_answer_id = user_unswer_id, user_answer_text = user_answer)
     question = sentences['sentences'][current_sentence-1]["question"]
     question_id = sentences['sentences'][current_sentence-1]["question_id"] 
+    correct_answer = sentences['sentences'][current_sentence-1]["answer"]
+    tips = sentences['sentences'][current_sentence-1]["tips"] 
+   
 
     # Сохраняем ответ в state
-    ai_result = await cl.check_answer(russian_sentence=question, user_answer=user_answer)
+    ai_result = await cl.check_answer(russian_sentence=question, correct_answer=correct_answer, grammar_topic=grammar_parant_topic_name+grammar_topic_name, tips=tips, user_answer=user_answer)
     ai_result_text =  json.dumps(ai_result, ensure_ascii=False)
     sentences['sentences'][current_sentence-1]["answer"] = user_answer
     sentences['sentences'][current_sentence-1]["ai_result"] = ai_result
@@ -805,7 +796,6 @@ def prepare_training_analysis_data(sentences: list) -> list:
 
     return analysis_data
 
-
 def format_training_analysis(result: dict) -> str:
     text = "<b>Результат тренировки</b>\n\n"
 
@@ -823,15 +813,9 @@ def format_training_analysis(result: dict) -> str:
 
         for item in weaknesses:
             topic = item.get("topic", "")
-            frequency = item.get("frequency", 0)
 
             if topic:
-                text += f"• {topic}"
-
-                if frequency:
-                    text += f" ({frequency}×)"
-
-                text += "\n"
+                text += f"• {topic}\n"
 
         text += "\n"
 
@@ -839,25 +823,30 @@ def format_training_analysis(result: dict) -> str:
     what_to_practice = result.get("what_to_practice", [])
 
     if what_to_practice:
-        text += "<b>Потренировать:</b>\n"
+        text += "<b>Что потренировать:</b>\n"
 
         for item in what_to_practice:
-            text += f"• {item}\n"
+            if item:
+                text += f"• {item}\n"
 
         text += "\n"
 
-    # Что получается хорошо
+    # Сильная сторона
     strengths = result.get("strengths", "")
 
+
     if strengths:
-        text += "<b>Получается хорошо:</b>\n"
+        strengths = strengths.strip()
+        text += "<b>Что уже получается:</b>\n"
         text += f"{strengths}\n\n"
 
-    # Что делать дальше
-    final_recommendation = result.get("final_recommendation", "")
+    # Рекомендация
+    final_recommendation = result.get(
+        "final_recommendation", ""
+    ).strip()
 
     if final_recommendation:
-        text += "<b>Что делать дальше:</b>\n"
+        text += "<b>Дальше:</b>\n"
         text += final_recommendation
 
     return text
@@ -877,15 +866,14 @@ def save_sentences(
 
     for item in sentences:
         question = item["question"]
+        translation = item["answer"]
+        tips = item["tips"]
 
-        print(f"level_id {level_id}")
-        print(f"grammar_topic_id {grammar_topic_id}")
-        print(f"lexical_topic_id {lexical_topic_id}")
-        print(f"difficulty_id {difficulty_id}")
-        print(f"sentence_type {sentence_type}")
-
+        
         question_id = db.save_sentence(
             sentence=question,
+            translation = translation,
+            tips = json.dumps(tips, ensure_ascii=False),
             level_id=level_id,
             grammar_topic_id=grammar_topic_id,
             lexical_topic_id=lexical_topic_id,
@@ -898,12 +886,7 @@ def save_sentences(
     return sentences_data
 
 
-
-
-
-
-
-async def get_sentences(
+async def get_sentences_(
     user_id: int,
     level_id: int,
     difficulty: int,

@@ -317,11 +317,17 @@ async def get_sentence(
 
 async def check_answer(
     russian_sentence: str,
+    correct_answer: str,
+    grammar_topic: str,
+    tips: str,
     user_answer: str
 ):
     print("Начинаем проверку ии")
     prompt = get_check_prompt(
         russian_sentence=russian_sentence,
+        correct_answer=correct_answer,
+        grammar_topic=grammar_topic,
+        tips=tips,
         user_answer=user_answer
     )
 
@@ -427,71 +433,86 @@ async def analyze_training(analysis_data: list) -> dict:
         }
 
 
-
 def format_check_result(result: dict) -> str:
 
     text = "<b>Оценка</b>\n\n"
 
+    # Grammar
+    grammar = result.get("grammar", {})
+
     text += (
         f"<b>Grammar: "
-        f"{result['grammar']['score']}/10</b>\n"
+        f"{grammar.get('score', 0)}/10</b>\n"
     )
 
-    for error in result["grammar"]["errors"]:
+    for error in grammar.get("errors", []):
         text += (
-            f"❌ {error['wrong']} → "
-            f"{error['correct']}\n"
+            f"❌ {error.get('wrong', '')} → "
+            f"{error.get('correct', '')}\n"
         )
 
+        explanation = error.get("explanation")
+        if explanation:
+            text += f"💡 {explanation}\n"
+
     text += "\n"
+
+    # Vocabulary
+    vocabulary = result.get("vocabulary", {})
 
     text += (
         f"<b>Vocabulary: "
-        f"{result['vocabulary']['score']}/10</b>\n"
+        f"{vocabulary.get('score', 0)}/10</b>\n"
     )
 
-    for comment in result["vocabulary"]["comments"]:
+    for comment in vocabulary.get("comments", []):
         text += f"{comment}\n"
 
     text += "\n"
+
+    # Accuracy
+    accuracy = result.get("accuracy", {})
 
     text += (
         f"<b>Accuracy: "
-        f"{result['accuracy']['score']}/10</b>\n"
+        f"{accuracy.get('score', 0)}/10</b>\n"
     )
 
-    for comment in result["accuracy"]["comments"]:
+    for comment in accuracy.get("comments", []):
         text += f"{comment}\n"
 
     text += "\n"
 
+    # Spelling
+    spelling = result.get("spelling", {})
+
     text += (
         f"<b>Spelling: "
-        f"{result['spelling']['score']}/10</b>\n"
+        f"{spelling.get('score', 0)}/10</b>\n"
     )
 
-    for error in result["spelling"]["errors"]:
+    for error in spelling.get("errors", []):
         text += (
-            f"❌ {error['wrong']} → "
-            f"{error['correct']}\n"
+            f"❌ {error.get('wrong', '')} → "
+            f"{error.get('correct', '')}\n"
         )
 
-    # Правильный вариант
-    correct_answer = result.get("correct_answer", "")
+    # Feedback
+    feedback = result.get("feedback", "")
 
-    if correct_answer:
+    if feedback:
         text += (
-            "\n<b>Правильный вариант:</b>\n"
-            f"{correct_answer}\n"
+            "\n<b>Комментарий:</b>\n"
+            f"{feedback}\n"
         )
 
+    # Итог
     text += (
         "\n<b>Итог: "
-        f"{result['total_score']}/10</b>"
+        f"{result.get('total_score', 0)}/10</b>"
     )
 
     return text
-
 
 async def get_difficlty_id(user_id, state):
     data = await state.get_data()

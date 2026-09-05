@@ -22,6 +22,7 @@ router = Router()
 #[START]
 @router.message(F.text == "/start")
 async def welcome_handler(message: Message, state: FSMContext):
+
     await state.clear()
     await state.set_state(st.MainStates.main_menu)
     user_id = message.from_user.id
@@ -165,11 +166,16 @@ async def choosing_grammar_topic_handler(callback: CallbackQuery, state: FSMCont
                 await state.set_state(exit_state)
             else:
                 print("im here")
-                topics = db.get_grammar_topics(parent_id = grammar_topic_id, level_id=level_id)
+                #topics = db.get_grammar_topics(parent_id = grammar_topic_id, level_id=level_id)
+                topics = db.get_grammar_topics(parent_id = parent_topic_id, level_id=level_id)
                 await callback.message.edit_text("Что хочешь потренировать?__", reply_markup=kb.grammar_topics_keyboard(topics, show_back_button))
                         
 
     if callback_id == 0: #Любое значение из списка.
+        print(f"grammar_topic_id: {grammar_topic_id}")
+        grammar_topic_id = db.get_random_grammar_topic_2(parent_id=grammar_topic_id, level_id=level_id)
+        await state.update_data(grammar_topic_id = grammar_topic_id )
+        print(f"grammar_topic_id: {grammar_topic_id}")
         print(f"Топик выбран: {db.get_grammar_topic_name(grammar_topic_id)}")
         if welcome_mode:
             await state.set_state(st.MainStates.bliz_prepare)     
@@ -326,6 +332,7 @@ async def main_training(callback: CallbackQuery, state: FSMContext):
 # Что ловим: нажатие кнопки граматического топика в режиме тренировка 
 @router.callback_query(st.MainStates.main_menu, F.data.startswith("training_grammar_topic"))
 async def main_training_grammar_handler(callback: CallbackQuery, state: FSMContext):
+    print("im here 2")
     await callback.answer()
 
     data = await state.get_data()
@@ -333,6 +340,7 @@ async def main_training_grammar_handler(callback: CallbackQuery, state: FSMConte
     groups = db.get_grammar_topics(parent_id=None,  level_id=level_id)
    # print(level_id)
    # print(groups)
+   # await callback.message.edit_text("Что хочешь потренировать?", reply_markup=kb.blitz_groups_keyboard(groups, False))
     await callback.message.edit_text("Что хочешь потренировать?", reply_markup=kb.blitz_groups_keyboard(groups, False))
     await state.set_state(st.MainStates.choosing_grammar_topic)
     await state.update_data(exit_state = st.MainStates.main_menu)

@@ -357,11 +357,250 @@ def create_tables5():
 
 
 
+import openpyxl
 
+
+def save_grammar_topics_from_excel(file_path: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        # --------------------------------------------------
+        # Читаем Excel
+        # --------------------------------------------------
+
+        workbook = openpyxl.load_workbook(
+            file_path,
+            read_only=True,
+            data_only=True
+        )
+
+        sheet = workbook.active
+
+        rows = list(sheet.iter_rows(values_only=True))
+
+        if not rows:
+            print("Excel-файл пуст")
+            return
+
+        # Первая строка — заголовки
+        headers = [str(x).strip() if x is not None else "" for x in rows[0]]
+
+        required_columns = [
+            "Группа",
+            "Топик",
+            "Уровень",
+            "Доступ"
+        ]
+
+        for column in required_columns:
+            if column not in headers:
+                raise ValueError(
+                    f"В Excel отсутствует колонка: {column}"
+                )
+
+        group_index = headers.index("Группа")
+        topic_index = headers.index("Топик")
+        level_index = headers.index("Уровень")
+        access_index = headers.index("Доступ")
+
+        # --------------------------------------------------
+        # 1. Получаем уровни из БД
+        # --------------------------------------------------
+
+        cursor.execute("""
+            SELECT id, code
+            FROM levels
+        """)
+
+        levels = {
+            row[1]: row[0]
+            for row in cursor.fetchall()
+        }
+
+        # --------------------------------------------------
+        # 2. Создаём группы
+        # --------------------------------------------------
+
+        groups = {}
+
+        for row in rows[1:]:
+            group_name = row[group_index]
+
+            if group_name is None:
+                continue
+
+            group_name = str(group_name).strip()
+
+            if not group_name:
+                continue
+
+            if group_name not in groups:
+
+                cursor.execute("""
+                    SELECT id
+                    FROM grammar_topics
+                    WHERE name = ?
+                      AND parent_id IS NULL
+                """, (group_name,))
+
+                result = cursor.fetchone()
+
+                if result:
+                    group_id = result[0]
+
+                else:
+                    cursor.execute("""
+                        INSERT INTO grammar_topics (
+                            name,
+                            parent_id,
+                            level_id
+                        )
+                        VALUES (?, NULL, NULL)
+                    """, (group_name,))
+
+                    group_id = cursor.lastrowid
+
+                groups[group_name] = group_id
+
+        # --------------------------------------------------
+        # 3. Создаём топики
+        # --------------------------------------------------
+
+        for row in rows[1:]:
+
+            group_name = row[group_index]
+            topic_name = row[topic_index]
+            level_code = row[level_index]
+            access = row[access_index]
+
+            if not group_name or not topic_name or not level_code:
+                continue
+
+            group_name = str(group_name).strip()
+            topic_name = str(topic_name).strip()
+            level_code = str(level_code).strip()
+
+            parent_id = groups[group_name]
+
+            # ----------------------------------------------
+            # Разворачиваем диапазон уровней
+            # ----------------------------------------------
+
+            level_codes = parse_level_codes(level_code)
+
+            for code in level_codes:
+
+                if code not in levels:
+                    raise ValueError(
+                        f"Уровень '{code}' не найден в таблице levels. "
+                        f"Топик: '{topic_name}'"
+                    )
+
+                level_id = levels[code]
+
+                # ------------------------------------------
+                # Проверяем, нет ли уже такого топика
+                # ------------------------------------------
+
+                cursor.execute("""
+                    SELECT id
+                    FROM grammar_topics
+                    WHERE name = ?
+                      AND parent_id = ?
+                      AND level_id = ?
+                """, (
+                    topic_name,
+                    parent_id,
+                    level_id
+                ))
+
+                result = cursor.fetchone()
+
+                if result:
+                    print(
+                        f"Уже существует: "
+                        f"{group_name} → {topic_name} → {code}"
+                    )
+                    continue
+
+                # ------------------------------------------
+                # Добавляем
+                # ------------------------------------------
+
+                cursor.execute("""
+                    INSERT INTO grammar_topics (
+                        name,
+                        parent_id,
+                        level_id
+                    )
+                    VALUES (?, ?, ?)
+                """, (
+                    topic_name,
+                    parent_id,
+                    level_id
+                ))
+
+                print(
+                    f"Добавлено: "
+                    f"{group_name} → {topic_name} → {code}"
+                )
+
+        conn.commit()
+
+        print("Импорт грамматических тем завершён")
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        workbook.close()
+        conn.close()
+
+
+def parse_level_codes(level_code: str) -> list[str]:
+
+    level_code = level_code.strip()
+
+    # Обычный уровень
+    if "–" not in level_code and "-" not in level_code:
+        return [level_code]
+
+    # Например:
+    # A1–A2
+    # B1-B2
+    # B1–C1
+    start, end = level_code.replace("-", "–").split("–")
+
+    start = start.strip()
+    end = end.strip()
+
+    level_order = [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "C1",
+        "C2"
+    ]
+
+    start_index = level_order.index(start)
+    end_index = level_order.index(end)
+
+    if start_index > end_index:
+        raise ValueError(
+            f"Некорректный диапазон уровней: {level_code}"
+        )
+
+    return level_order[start_index:end_index + 1]
 
 
 print("start")
-create_tables5()
+file_path = "additionalData/grammar_topics.xlsx"
+save_grammar_topics_from_excel(file_path)
+print("finish")
+
 
 
 
