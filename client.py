@@ -18,8 +18,8 @@ load_dotenv()
 openAI_api_key = os.getenv("OPENAI_API_KEY")
 ODIROUTER_api_key = os.getenv("ODIROUTER_API_KEY")
 BASE_URL = "https://api.odirouter.ai/v1"
-#MODEL = "gemini-3.7-flash"
-MODEL ="gpt-5.4-mini"
+MODEL = "gemini-3.7-flash"
+#MODEL ="gpt-5.4-mini"
 #MODEL="gpt-5.6-terra"
 #MODEL="gpt-5.6-sol"
 #MODEL="gpt-5.6-luna"
@@ -44,9 +44,6 @@ async def ask_gpt_ODIROUTER(prompt: str, user_id: int) -> str:
         base_instruction ={"role": "system", "content": "Ты дружелюбный телегам бот, который помогает пользователю с грамматикой английского языка. Ты должен давать краткие и понятные объяснения, а также примеры использования."}
 
         full_message =[base_instruction] + messages
-
-       
-
         
         response = await client.chat.completions.create(
                 model=MODEL,   
@@ -107,7 +104,8 @@ async def analize_diagnostic(level: int, answers: list) -> dict:
     response = re.sub( r"\s*```$", "", response )
 
     try:
-        result = json.loads(response)
+        #result = json.loads(response)
+        result = parse_json_response(response)
         return result
  
     except json.JSONDecodeError:
@@ -349,9 +347,11 @@ async def check_answer(
     )
     print("Ждем ответ от ИИ")
     result = response.choices[0].message.content
-
+    print(result)
     # Преобразуем JSON от ИИ в Python-словарь
-    result = json.loads(result)
+    #result = json.loads(result)
+    result = parse_json_response(result)
+    
 
     return result
 
@@ -415,7 +415,8 @@ async def analyze_training(analysis_data: list) -> dict:
     )
 
     try:
-        return json.loads(result)
+        #return json.loads(result)
+        return  parse_json_response(result)
 
     except json.JSONDecodeError:
         print("Ошибка обработки анализа тренировки:")
@@ -522,6 +523,47 @@ async def get_difficlty_id(user_id, state):
         difficulty_id = db.get_last_difficulty_id_by_user_id(user_id)
 
     return difficulty_id
+
+
+
+
+
+def parse_json_response(text: str):
+    text = text.strip()
+
+    # Убираем Markdown code block, если модель его добавила
+    match = re.search(
+        r"```(?:json)?\s*(.*?)\s*```",
+        text,
+        re.IGNORECASE | re.DOTALL
+    )
+
+    if match: text = match.group(1).strip()
+
+    # Пробуем распарсить весь текст как JSON
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+
+        
+    # Если модель добавила текст до/после JSON,
+    # ищем начало JSON-объекта или массива
+    decoder = json.JSONDecoder()
+
+    for i, char in enumerate(text):
+        if char in "{[":
+            try:
+                obj, _ = decoder.raw_decode(text[i:])
+                return obj
+            except json.JSONDecodeError:
+                continue
+
+    raise ValueError("В ответе модели не найден корректный JSON")
+
+
+
 
     
 

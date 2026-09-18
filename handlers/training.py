@@ -229,7 +229,8 @@ async def finish_sentence_generation(
         generated = await generation_task
         print("AI генерация закончена")
 
-        generated_json = json.loads(generated)
+        #generated_json = json.loads(generated)
+        generated_json = cl.parse_json_response(generated)
 
         print(f"AI сгенерировал: {generated_json} ")
         generated_sentences = generated_json.get("sentences", [])
