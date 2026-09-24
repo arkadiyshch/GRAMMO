@@ -28,7 +28,7 @@ create_tables()
 
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-ENV = os.getenv("ENV")
+LOCAL_OR_SERVER = os.getenv("LOCAL_OR_SERVER")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -133,9 +133,9 @@ async def start_web_server():
 
 if __name__ == "__main__":
 
-    ENV = os.getenv("ENV")
-    print(ENV)
-    if ENV == "local":
+    LOCAL_OR_SERVER = os.getenv("ENV")
+    print(f"LOCAL_OR_SERVER: {LOCAL_OR_SERVER}")
+    if LOCAL_OR_SERVER == "local":
         asyncio.run(mainLocal())
     else:   
         asyncio.run(main())
