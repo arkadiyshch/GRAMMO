@@ -29,59 +29,29 @@ create_tables()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 LOCAL_OR_SERVER = os.getenv("LOCAL_OR_SERVER")
+print(f"LOCAL_OR_SERVER: {LOCAL_OR_SERVER}")
 
 logging.basicConfig(level=logging.INFO)
 
 
-async def mainLocal() -> None:
-    #Раскомментировать
-    session = AiohttpSession(proxy="socks5://127.0.0.1:3067")
-    create_tables()
-
-
-    bot = Bot(
-        token=TOKEN,
-        default=DefaultBotProperties(parse_mode = ParseMode.HTML),  
-        #Раскомментировать
-        session=session       
-    )
-   
-
-    dp = Dispatcher(storage=MemoryStorage())
-    dp.message.middleware(RateLimitMiddleware())
-    #dp.message.middleware(AdminOnlyMiddleware())
-    dp.include_router(routes_base_function.router)
-    dp.include_router(menu.router)
-    dp.include_router(training.router)
-    dp.include_router(subscription.router)
-    
-    await bot.set_my_commands([])
-
-    web_task = asyncio.create_task(
-        start_web_server()
-    )
-
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        await dp.start_polling(bot)
-
-    except TelegramAPIError as e:
-        logging.error(f"шибка при запуске TelegramAPIError: {e}")
-    except Exception as e:
-        logging.error(f"Unexpected error: {e}")
-    finally:
-        web_task.cancel()
-        await bot.session.close()
 
 
 async def main() -> None:
     #session = AiohttpSession(proxy="socks5://127.0.0.1:3067")
     create_tables()
-    bot = Bot(
-        token=TOKEN,
-        default=DefaultBotProperties(parse_mode = ParseMode.HTML) 
-        #session=session       
-    )
+
+    if LOCAL_OR_SERVER == 'local':
+        bot = Bot(
+            token=TOKEN,
+            default=DefaultBotProperties(parse_mode = ParseMode.HTML),              
+            session=AiohttpSession(proxy="socks5://127.0.0.1:3067")       
+        )
+    else:
+        bot = Bot(
+            token=TOKEN,
+            default=DefaultBotProperties(parse_mode = ParseMode.HTML) 
+            #session=session       
+        )
 
     dp = Dispatcher(storage=MemoryStorage())
     dp.message.middleware(RateLimitMiddleware())
@@ -132,11 +102,5 @@ async def start_web_server():
 
 
 if __name__ == "__main__":
-
-    LOCAL_OR_SERVER = os.getenv("ENV")
-    print(f"LOCAL_OR_SERVER: {LOCAL_OR_SERVER}")
-    if LOCAL_OR_SERVER == "local":
-        asyncio.run(mainLocal())
-    else:   
-        asyncio.run(main())
-        #asyncio.run(tr.test_parallel_gen_sentences())
+    asyncio.run(main())
+    
