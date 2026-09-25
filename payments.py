@@ -2,7 +2,7 @@ import os
 import uuid
 from yookassa import Configuration
 from yookassa import Payment
-from data import database as db
+import database as db
 
 
 #YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")

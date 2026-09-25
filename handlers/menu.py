@@ -14,6 +14,7 @@ from aiogram.fsm.state import State, StatesGroup
 import handlers.training as tr
 import prompts as p
 import handlers.routes_base_function as rbf
+import time
 
 
 
@@ -91,18 +92,40 @@ async def main_choosing_level_handler(callback: CallbackQuery, state: FSMContext
 #Выбор конкретного уровня  
 @router.callback_query(st.MainStates.choosing_level, F.data.startswith("level_id_"))
 async def choosing_level_handler(callback: CallbackQuery, state: FSMContext):
+
+    t1 = time.perf_counter()
     await callback.answer()
     data = await state.get_data()
     user_id = data["user_id"]    
     level_id = callback.data.replace("level_id","")[-1]
+    t2 = time.perf_counter()
+    delta = t2 - t1
+    print(f"Зfгрузка state: {round((delta) * 1000)} мс")
+
+    t1 = time.perf_counter()
     level_name = db.get_level_name(level_id)
+    t2 = time.perf_counter()
+    delta = t2 - t1
+    print(f"Получение имения левела из БД: {round((delta) * 1000)} мс")
+   
+    t1 = time.perf_counter()
     grammar_topics = db.get_grammar_topics(parent_id=None,  level_id=level_id)
+    t2 = time.perf_counter()
+    delta = t2 - t1
+    print(f"Получание грам. тем из БД: {round((delta) * 1000)} мс")
+
     welcome_mode = data["welcome_mode"] 
     active_messages = data["active_messages"]
 
+
+    t1 = time.perf_counter()
     db.save_user_level(user_id=user_id, level_id=level_id)
+    t2 = time.perf_counter()
+    delta = t2 - t1
+    print(f"Сохранение урвоня в БД: {round((delta) * 1000)} мс")
     await state.update_data(level_id = level_id)
 
+    
     if welcome_mode:
         grammar_topic_id = random.choice(grammar_topics)[0]
         topic_name = db.get_grammar_topic_name(grammar_topic_id)
@@ -110,9 +133,7 @@ async def choosing_level_handler(callback: CallbackQuery, state: FSMContext):
         
     else:
         await state.set_state(st.MainStates.main_menu)
-
         await callback.message.edit_text("Начинаем тренировку?", reply_markup=await kb.main_menu_keyboard(user_id))
-
         state.update_data(active_messages=active_messages)
 
 #Выбор конкретного уровня  
