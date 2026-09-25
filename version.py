@@ -1,1 +1,1 @@
-VERSION = "GRAMMO v1.1: sql -> postgre"
+VERSION = "GRAMMO v1.1.1"

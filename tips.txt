@@ -2,3 +2,9 @@ git checkout test - переходим в тест
 git pull origin test - стягиваем данные с гит с ветки тест
 git merge main - мерджим с маин в текущую ветку
 git push origin test - пушим 
+
+
+
+
+Обновить requirements
+pip freeze > requirements.txt
