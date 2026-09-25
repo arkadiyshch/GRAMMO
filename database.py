@@ -6,7 +6,7 @@ from psycopg_pool import ConnectionPool
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import json
-
+import time
 load_dotenv()
 
 
@@ -1244,19 +1244,24 @@ def save_user_level(
 
 
 def get_level_name(level_id):
-
+    t1 = time.perf_counter()
+  
+    print(f"Время 1: {time.perf_counter()}")
     with pool.connection() as conn:
-
+        print(f"Время 2: {time.perf_counter()}")
         try:
             with conn.cursor() as cursor:
+                print(f"Время 3: {time.perf_counter()}")
 
                 cursor.execute("""
                     SELECT code
                     FROM levels
                     WHERE id = %s
                 """, (level_id,))
+                print(f"Время 4: {time.perf_counter()}")
 
                 result = cursor.fetchone()
+                print(f"Время 5: {time.perf_counter()}")
 
                 if result is None:
                     return None
@@ -1267,7 +1272,9 @@ def get_level_name(level_id):
             conn.rollback()
             raise
       
-
+        t2 = time.perf_counter()
+        delta = t2 - t1
+        print(f"Получение имения левела из БД: {round((delta) * 1000)} мс")
 
 def get_grammar_group_name(group_id):
 

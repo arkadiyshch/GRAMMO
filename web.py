@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
-import data.database as db
+import database as db
 import keyboards as kb
 
 
