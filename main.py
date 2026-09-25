@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from data.database import create_tables
+from database import create_tables
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -18,7 +18,7 @@ from aiohttp_socks import ProxyConnector
 
 from handlers import menu, routes_base_function, training, subscription
 
-from data.database import create_tables
+from database import create_tables
 from web import app
 import uvicorn
 

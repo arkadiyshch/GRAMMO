@@ -10,7 +10,7 @@ import prompts
 from prompts import get_check_prompt
 import json
 import re
-import data.database as db
+import database as db
 
 
 load_dotenv()
@@ -18,7 +18,8 @@ load_dotenv()
 openAI_api_key = os.getenv("OPENAI_API_KEY")
 ODIROUTER_api_key = os.getenv("ODIROUTER_API_KEY")
 BASE_URL = "https://api.odirouter.ai/v1"
-MODEL = "gemini-3.7-flash"
+#MODEL = "gemini-3.7-flash"
+MODEL = "gemini-3.1-flash-lite"
 #MODEL ="gpt-5.4-mini"
 #MODEL="gpt-5.6-terra"
 #MODEL="gpt-5.6-sol"

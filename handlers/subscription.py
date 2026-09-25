@@ -7,7 +7,7 @@ from aiogram.types import (CallbackQuery, Message)
 import json
 import messages as mes
 import client as cl
-import data.database as db
+import database as db
 import keyboards as kb
 import json
 import asyncio

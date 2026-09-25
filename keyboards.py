@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-import data.database as db
+import database as db
 
 def diagnostic_level_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[

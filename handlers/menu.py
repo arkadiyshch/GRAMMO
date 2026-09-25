@@ -7,7 +7,7 @@ from aiogram.types import (CallbackQuery, Message)
 import json
 import messages as mes
 import client as cl
-import data.database as db
+import database as db
 import keyboards as kb
 import states as st 
 from aiogram.fsm.state import State, StatesGroup
