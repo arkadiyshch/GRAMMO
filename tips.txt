@@ -7,8 +7,12 @@ git push origin test - пушим
 Обновить requirements
 pip freeze > requirements.txt
 
+Активировать venv
 .\venv\Scripts\Activate.ps1
 
 стянуть с гита
 git fetch origin
 git reset --hard origin/test
+
+
+#Перенести текущую версию в другую ветку, например, с test  в main
