@@ -11,6 +11,7 @@ from prompts import get_check_prompt
 import json
 import re
 import database as db
+import cache
 
 
 load_dotenv()
@@ -259,7 +260,7 @@ async def generate_sentences(prompt: str):
 
 
 
-async def get_sentence(
+async def get_sentence__to_del(
     user_id: int,
     level_id: int,
     difficulty: int,
@@ -289,7 +290,7 @@ async def get_sentence(
             limit=10
         )
     generated_sentence = await generate_sentence(
-        level=db.get_level_name(level_id),
+        level=cache.get_level_name(level_id),
         difficulty=difficulty,
         group =db.get_group_name(group_id),
         topic=db.get_topic_name(topic_id),        

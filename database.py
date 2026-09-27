@@ -7,7 +7,10 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import json
 import time
+from psycopg import sql
+
 load_dotenv()
+
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -31,6 +34,7 @@ pool = ConnectionPool(
 
 
 def create_tables():
+    print("DB create_tables")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -281,6 +285,7 @@ def create_tables():
 
 
 def add_user(telegram_id: int, username: str):
+    print("DB add user")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -330,7 +335,7 @@ def seed_levels():
         ("C1", 5),
         ("C2", 6),
     ]
-
+    print("DB seed levels")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -356,6 +361,7 @@ def seed_levels():
 # ============================================================
 
 def seed_grammar_topics():
+    print("DB seedgrammar topics")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -534,7 +540,7 @@ def seed_grammar_topics():
 # ============================================================
 
 def get_grammar_topics_old(parent_id: int | None, level_id: int):
-
+    print("DB get grammar topic old func")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -570,7 +576,7 @@ def get_grammar_topics_old(parent_id: int | None, level_id: int):
 
 
 def get_grammar_topics(parent_id: int | None, level_id: int):
-
+    print("DB. get_grammar_topics")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -603,7 +609,7 @@ def get_grammar_topics(parent_id: int | None, level_id: int):
 # ============================================================
 
 def get_lexical_topics(parent_id: int | None, level_id: int):
-
+    print("DB Get lexical topics")
     with pool.connection() as conn:
 
         try:
@@ -643,7 +649,7 @@ def get_lexical_topics(parent_id: int | None, level_id: int):
 # ============================================================
 
 def get_parent_grammar_topic_id(topic_id: int):
-
+    print("DB get parent grammar topic name")
     with pool.connection() as conn:
 
         try:
@@ -668,7 +674,7 @@ def get_parent_grammar_topic_id(topic_id: int):
 
 
 def get_grammar_topic_level_id(grammar_topic_id: int) -> int | None:
-
+    print("DB get grammar topic level id")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -693,7 +699,7 @@ def get_grammar_topic_level_id(grammar_topic_id: int) -> int | None:
 
 
 def get_random_grammar_topic_2(parent_id: int, level_id: int) -> int | None:
-
+    print("DB. get_random_grammar_topic_2")
     with pool.connection() as conn:
 
         try:
@@ -728,7 +734,7 @@ def get_random_grammar_topic_2(parent_id: int, level_id: int) -> int | None:
 
 
 def get_parent_lexical_topic_id(topic_id: int):
-
+    print("DB get parent lexical topic id")
     with pool.connection() as conn:
 
         try:
@@ -755,7 +761,7 @@ def get_parent_lexical_topic_id(topic_id: int):
 
 
 def get_topics_count(parent_id, level_id: int) -> int:
-
+    print("DB get topics count")
     with pool.connection() as conn:
         with conn.cursor() as cursor:
 
@@ -788,7 +794,7 @@ def save_sentence(
     difficulty_id: int,
     sentence_type: int = 0
 ):
-
+    print("DB save sentence")
     with pool.connection() as conn:
 
         try:
@@ -828,6 +834,76 @@ def save_sentence(
             raise
 
 
+def save_sentences(
+    sentences_data: dict,
+    level_id: int,
+    grammar_topic_id: int,
+    lexical_topic_id: int | None,
+    difficulty_id: int,
+    sentence_type: int = 0
+):
+    print("DB save sentences")
+
+    sentences = sentences_data["sentences"]
+
+    if not sentences:
+        return sentences_data
+
+    placeholders = []
+    params = []
+
+    for item in sentences:
+        placeholders.append(
+            "(%s, %s, %s, %s, %s, %s, %s, %s)"
+        )
+
+        params.extend([
+            item["question"],
+            item["answer"],
+            json.dumps(item["tips"], ensure_ascii=False),
+            level_id,
+            grammar_topic_id,
+            lexical_topic_id,
+            difficulty_id,
+            sentence_type
+        ])
+
+    query = f"""
+        INSERT INTO sentences (
+            sentence,
+            translation,
+            tips,
+            level_id,
+            grammar_topic_id,
+            lexical_topic_id,
+            difficulty_id,
+            type
+        )
+        VALUES {", ".join(placeholders)}
+        RETURNING id
+    """
+
+    with pool.connection() as conn:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
+
+                question_ids = [
+                    row[0]
+                    for row in cursor.fetchall()
+                ]
+
+            conn.commit()
+
+        except Exception:
+            conn.rollback()
+            raise
+
+    for item, question_id in zip(sentences, question_ids):
+        item["question_id"] = question_id
+
+    return sentences_data
+
 
 def add_sentence(
     sentence: str,
@@ -836,7 +912,7 @@ def add_sentence(
     sentence_type: int = 0
 ):
 
-
+    print("DB add sentence")
 
     with pool.connection() as conn:
         try:
@@ -876,7 +952,7 @@ def get_sentence_from_DB(
     topic_id: int
 ):
 
-
+    print("DB get sentence from bd")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -915,6 +991,7 @@ def get_unused_sentences(
     difficulty_id: int,
     limit: int
 ):
+    print("DB get unused sentence")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -977,7 +1054,7 @@ def get_unused_sentence_old(
     level: int,
     topic_id: int | None = None
 ):
-
+    print("DB get unused sentence old func")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -1029,12 +1106,12 @@ def get_unused_sentence_old(
             raise
     
 
-def get_blitz_sentence(
+def get_blitz_sentence___to_del(
     user_id: int,
     level: int,
     topic_id: int | None = None
 ):
-
+    print("DB ")
     return get_unused_sentence_old(
         user_id=user_id,
         level=level,
@@ -1048,6 +1125,7 @@ def get_blitz_sentence(
 
 def get_grammar_topic(topic_id: int):
 
+    print("DB get grammar topic")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -1067,7 +1145,7 @@ def get_grammar_topic(topic_id: int):
 
 
 def get_random_grammar_topic():
-
+    print("DB get randonm grammar topic")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -1101,8 +1179,8 @@ def get_random_grammar_topic():
 #
 # ============================================================
 
-def add_user_question(user_id: int, sentence_id: int):
-
+def add_user_question__to_del(user_id: int, sentence_id: int):
+    
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -1130,7 +1208,7 @@ def add_user_question(user_id: int, sentence_id: int):
 
 
 
-def get_used_sentence_ids(user_id: int):
+def get_used_sentence_ids__to_del(user_id: int):
 
     with pool.connection() as conn:
 
@@ -1157,7 +1235,7 @@ def get_used_sentence_ids(user_id: int):
 # ============================================================
 
 def get_current_user_level(user_id: int) -> int | None:
-
+    print("DB get current user level")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -1183,7 +1261,7 @@ def get_current_user_level(user_id: int) -> int | None:
     
 
 def get_current_user_level_id(user_id: int) -> int | None:
-
+    print("DB. get_current_user_level_id")
 
     with pool.connection() as conn:
         try:
@@ -1205,16 +1283,16 @@ def get_current_user_level_id(user_id: int) -> int | None:
                 return int(result[0])
         except Exception:
             conn.rollback()
-            raise
-    
+            raise    
     
 
 def save_user_level(
+    
     user_id: int,
     level_id: int,
     estimated_level: str | None = None
 ):
-
+    print("DB.save_user_level")
     with pool.connection() as conn:
         try:
             with conn.cursor() as cursor:
@@ -1244,25 +1322,20 @@ def save_user_level(
 
 
 def get_level_name(level_id):
-    t1 = time.perf_counter()
-  
-    print(f"Время 1: {time.perf_counter()}")
+    print("DB get level name")
+
     with pool.connection() as conn:
-        print(f"Время 2: {time.perf_counter()}")
         try:
             with conn.cursor() as cursor:
-                print(f"Время 3: {time.perf_counter()}")
-
+    
                 cursor.execute("""
                     SELECT code
                     FROM levels
                     WHERE id = %s
                 """, (level_id,))
-                print(f"Время 4: {time.perf_counter()}")
-
+    
                 result = cursor.fetchone()
-                print(f"Время 5: {time.perf_counter()}")
-
+    
                 if result is None:
                     return None
 
@@ -1272,12 +1345,10 @@ def get_level_name(level_id):
             conn.rollback()
             raise
       
-        t2 = time.perf_counter()
-        delta = t2 - t1
-        print(f"Получение имения левела из БД: {round((delta) * 1000)} мс")
+        
 
-def get_grammar_group_name(group_id):
-
+def get_grammar_group_name__to_del(group_id):
+    print("DB get grammar griuo name")
     with pool.connection() as conn:
 
         try:
@@ -1302,7 +1373,7 @@ def get_grammar_group_name(group_id):
     
 
 def get_grammar_topic_name(topic_id):
-
+    print("DB. get_grammar_topic_name")
     if topic_id is None:
         return "Любая грамматическая тема текущего уровня"
 
@@ -1331,7 +1402,7 @@ def get_grammar_topic_name(topic_id):
 
 
 def get_lexical_topic_name(topic_id):
-
+    print("DB get lexical topic name")
     if topic_id is None:
         return "Любая тема"
 
@@ -1359,7 +1430,7 @@ def get_lexical_topic_name(topic_id):
     
 
 
-def get_lexical_group_name(group_id):
+def get_lexical_group_name__to_del(group_id):
 
     with pool.connection() as conn:
 
@@ -1389,7 +1460,7 @@ def get_lexical_group_name(group_id):
 # ============================================================
 
 def get_difficulty_id_by_user_id(user_id):
-
+    print("DB get difficulty by user id")
     with pool.connection() as conn:
 
         try:
@@ -1433,7 +1504,7 @@ def get_difficulty_id_by_user_id(user_id):
 
 
 def get_last_difficulty_id_by_user_id(user_id: int):
-
+    print("DB get last difficulty by user id")
     with pool.connection() as conn:
 
         try:
@@ -1477,7 +1548,7 @@ def get_last_difficulty_id_by_user_id(user_id: int):
 
 
 def get_difficulty_name_by_id(difficulty_id: int):
-
+    print("DB get difficulty name bu user id")
     with pool.connection() as conn:
 
         try:
@@ -1502,7 +1573,7 @@ def get_difficulty_name_by_id(difficulty_id: int):
     
 
 def save_user_difficulty(user_id: int, difficulty_id: int):
-
+    print("DB csave user difficulty")
     with pool.connection() as conn:
 
         try:
@@ -1530,7 +1601,7 @@ def save_user_difficulty(user_id: int, difficulty_id: int):
 
 
 def get_difficulties():
-
+    print("DB get difficulties")
     with pool.connection() as conn:
 
         try:
@@ -1552,7 +1623,7 @@ def get_difficulties():
 # USER ANSWERS
 # ============================================================
 
-def save_user_answer_old(
+def save_user_answer_old__to_del(
     user_id,
     sentence_id,
     user_answer,
@@ -1587,7 +1658,7 @@ def save_user_answer_old(
 
 
 def get_last_user_sentences(user_id: int, limit: int = 10):
-
+    print("DB get last user sentences")
     with pool.connection() as conn:
 
         try:
@@ -1620,7 +1691,7 @@ def get_last_user_sentences(user_id: int, limit: int = 10):
 # ============================================================
 
 def delete_user_levels(user_id: int):
-
+    print("DB delete user levels")
     with pool.connection() as conn:
 
         try:
@@ -1644,7 +1715,7 @@ def delete_user_levels(user_id: int):
 # ============================================================
 
 async def save_user_question(user_id, sentence_id):
-
+    print("DB save user question")
     with pool.connection() as conn:
 
         try:
@@ -1675,7 +1746,7 @@ async def save_user_question(user_id, sentence_id):
 
 
 async def save_user_answer(user_answer_id, user_answer_text):
-
+    print("DB save user answer")
     with pool.connection() as conn:
 
         try:
@@ -1699,7 +1770,7 @@ async def save_user_answer(user_answer_id, user_answer_text):
 
 
 async def save_ai_answer(user_answer_id, ai_answer_text):
-
+    print("DB save ai answer")
     with pool.connection() as conn:
             
         try:
@@ -1727,7 +1798,7 @@ async def save_ai_answer(user_answer_id, ai_answer_text):
 # ============================================================
 
 def get_user_subscription(user_id):
-
+    print("DB get user subscrtion")
     with pool.connection() as conn:
 
         try:
@@ -1760,8 +1831,8 @@ def get_user_subscription(user_id):
        
 
 
-def check_grammar_topic_access(user_id, grammar_topic_id):
-
+def check_grammar_topic_access__to_del(user_id, grammar_topic_id):
+    
     """
     В текущей схеме grammar_topics НЕТ поля subscription_required.
 
@@ -1795,7 +1866,7 @@ def check_grammar_topic_access(user_id, grammar_topic_id):
 
 
 def get_daily_questions_count(user_id):
-
+    print("DB get daily question count")
     with pool.connection() as conn:
 
         try:
@@ -1816,7 +1887,7 @@ def get_daily_questions_count(user_id):
     
 
 def get_subscription(subscription_code):
-
+    print("DB get suncription")
     with pool.connection() as conn:
 
         try:
@@ -1854,7 +1925,7 @@ def save_payment(
     currency,
     status
 ):
-
+    print("DB save payment")
     with pool.connection() as conn:
 
         try:
@@ -1893,7 +1964,7 @@ def save_payment(
 
 
 def get_payment_by_yookassa_id(yookassa_payment_id):
-
+    print("DB get payment by yookassa id")
     with pool.connection() as conn:
 
         try:
@@ -1923,7 +1994,7 @@ def get_payment_by_yookassa_id(yookassa_payment_id):
     
 
 def mark_payment_succeeded(yookassa_payment_id):
-
+    print("DB mark payment succeed")
     with pool.connection() as conn:
 
         try:
@@ -1946,7 +2017,7 @@ def mark_payment_succeeded(yookassa_payment_id):
 
 
 def process_successful_payment(yookassa_payment_id):
-
+    print("DB process successful payment")
     with pool.connection() as conn:
 
         try:
@@ -2081,7 +2152,7 @@ def process_successful_payment(yookassa_payment_id):
 # ============================================================
 
 def update_user_email(user_id, email):
-
+    print("DB update user email")
     with pool.connection() as conn:
 
         try:
@@ -2105,7 +2176,7 @@ def update_user_email(user_id, email):
 
 
 def get_user_email(user_id):
-
+    print("DB get user emanil")
     with pool.connection() as conn:
 
         try:

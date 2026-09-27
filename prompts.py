@@ -1,4 +1,5 @@
 import database as db
+import cache
 
 def gettestPrompt(level, answers_text):
 
@@ -91,7 +92,7 @@ def gettestPrompt(level, answers_text):
 
     return prompt
 
-def get_sentence_prompt(level: str, difficulty: int, group: str, topic: str, previous_sentences=None) -> str:
+def get_sentence_prompt_to_del(level: str, difficulty: int, group: str, topic: str, previous_sentences=None) -> str:
 
     previous_sentences = db.get_last_user_sentences(user_id=user_id, limit=10)
         
@@ -170,12 +171,12 @@ def get_sentence_prompt(level: str, difficulty: int, group: str, topic: str, pre
 
 
 def get_grammar_topic_aggregate(grammar_topic_id, level_id):
-    level_text = db.get_level_name(level_id)
+    level_text = cache.get_level_name(level_id)
 
     if grammar_topic_id is None: grammar_topic_id=0
     grammar_topic_parent_id =0
     if grammar_topic_id !=0 :
-        grammar_topic_parent_id = db.get_parent_grammar_topic_id(grammar_topic_id)
+        grammar_topic_parent_id = cache.get_parent_grammar_topic_id(grammar_topic_id)
     if grammar_topic_parent_id is None: grammar_topic_parent_id=0
 
     aggr = ""
@@ -184,17 +185,17 @@ def get_grammar_topic_aggregate(grammar_topic_id, level_id):
         if grammar_topic_parent_id == 0:
             aggr = f"Любая соответствующая уровню пользователя {level_text}"    
         else:
-            aggr = db.get_grammar_topic_name(grammar_topic_parent_id)    
+            aggr = cache.get_grammar_topic_name(grammar_topic_parent_id)    
     else:
         if grammar_topic_parent_id == 0:
-            aggr = db.get_grammar_topic_name(grammar_topic_id)   
+            aggr = cache.get_grammar_topic_name(grammar_topic_id)   
         else:
-            aggr = f"{db.get_grammar_topic_name(grammar_topic_parent_id)} : {db.get_grammar_topic_name(grammar_topic_id) } "   
+            aggr = f"{cache.get_grammar_topic_name(grammar_topic_parent_id)} : {cache.get_grammar_topic_name(grammar_topic_id) } "   
 
     return aggr        
 
 def get_lexical_topic_aggregate(lexical_topic_id, level_id):
-    level_text = db.get_level_name(level_id)
+    level_text = cache.get_level_name(level_id)
 
     if lexical_topic_id is None: lexical_topic_id=0
     
@@ -221,7 +222,7 @@ def get_lexical_topic_aggregate(lexical_topic_id, level_id):
 
 async def get_sentences_prompt(user_id:int, level_id: str, difficulty: int, grammar_topic_id:int, lexical_topic_id: int, sentence_count: int, welcome_mode: bool) -> str:
 
-    level_text = db.get_level_name(level_id)
+    level_text = cache.get_level_name(level_id)
 
     grammar_topic_aggregate = get_grammar_topic_aggregate(grammar_topic_id, level_id)
     lexical_topic_aggregate = get_lexical_topic_aggregate(lexical_topic_id, level_id)

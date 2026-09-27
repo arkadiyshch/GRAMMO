@@ -19,7 +19,9 @@ from handlers.routes_base_function import my_print
 
 import states as st
 import traceback
+import cache
 router = Router()
+
 
 TOTAL_QUESTIONS = 10
 import prompts as p
@@ -27,7 +29,8 @@ generation_events = {}
 
 
 async def tarining_start(callback: CallbackQuery, state: FSMContext):
-
+    print("## training_start")
+        
     data = await state.get_data()
 
     level_id = data.get("level_id")
@@ -45,7 +48,7 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
     total_sentences = 3 if welcome_mode else TOTAL_QUESTIONS
 
     if grammar_topic_id is None:
-        grammar_topic_id = db.get_random_grammar_topic()
+        grammar_topic_id = cache.get_random_grammar_topic()
 
     await state.update_data(current_sentence=0,  total_sentence=total_sentences, generation_finished=False)
     await state.update_data(grammar_topic_id=grammar_topic_id)
@@ -56,14 +59,14 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
     # --------------------------------------------------
     # Сообщение о начале тренировки
     # --------------------------------------------------
-    grammar_topic_parant_id = db.get_parent_grammar_topic_id(grammar_topic_id)
+    grammar_topic_parant_id =cache.get_parent_grammar_topic_id(grammar_topic_id)
     if grammar_topic_parant_id is None:
         grammar_topic_parant_name = ""
     else:
-        grammar_topic_parant_name = db.get_grammar_topic_name(grammar_topic_parant_id) + " --> "
+        grammar_topic_parant_name = cache.get_grammar_topic_name(grammar_topic_parant_id) + " --> "
 
     grammar_topic_parant_id = ""     
-    grammar_topic_name = db.get_grammar_topic_name(grammar_topic_id)
+    grammar_topic_name = cache.get_grammar_topic_name(grammar_topic_id)
     
     cur_mes = await callback.message.answer(
         f"Начинаем тренировку по теме:\n"
@@ -112,18 +115,8 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
     # --------------------------------------------------
 
     generate_count = total_sentences - db_count
-
-    print(
-        f"Нужно сгенерировать: {generate_count}"
-    )
-
-    # --------------------------------------------------
-    # Сохраняем предложения из БД в FSM
-    # --------------------------------------------------
-
-    await state.update_data(
-        sentences=db_sentences
-    )
+    print(f"Нужно сгенерировать: {generate_count}")
+    await state.update_data(sentences=db_sentences)
 
     # --------------------------------------------------
     # 3. Если БД уже дала всё — AI не нужен
@@ -131,9 +124,7 @@ async def tarining_start(callback: CallbackQuery, state: FSMContext):
 
     if generate_count == 0:
 
-        await state.update_data(
-            generation_finished=True
-        )
+        await state.update_data(generation_finished=True)
 
         generation_events[user_id].set()
 
@@ -223,16 +214,16 @@ async def finish_sentence_generation(
     lexical_topic_id: int | None,
     difficulty_id: int
 ):
+    print("## finish_sentence_generation")
 
     try:
 
         generated = await generation_task
         print("AI генерация закончена")
 
-        #generated_json = json.loads(generated)
         generated_json = cl.parse_json_response(generated)
 
-        print(f"AI сгенерировал: {generated_json} ")
+        #print(f"AI сгенерировал: {generated_json} ")
         generated_sentences = generated_json.get("sentences", [])
 
         print(
@@ -244,13 +235,23 @@ async def finish_sentence_generation(
         # Сохраняем в БД
         # --------------------------------------------------
 
-        print("before save_sentences:")
-        save_sentences(
-            sentences_data=generated_json,
-            level_id=level_id,
-            grammar_topic_id=grammar_topic_id,
-            lexical_topic_id=lexical_topic_id,
-            difficulty_id=difficulty_id,
+        
+
+        #save_sentences(
+        #    sentences_data=generated_json,
+        #    level_id=level_id,
+        #    grammar_topic_id=grammar_topic_id,
+        #    lexical_topic_id=lexical_topic_id,
+        #    difficulty_id=difficulty_id,
+        #    sentence_type=0
+        #)
+
+        db.save_sentences(
+            sentences_data=generated_json, 
+            level_id=level_id, 
+            grammar_topic_id=grammar_topic_id, 
+            lexical_topic_id=lexical_topic_id, 
+            difficulty_id=difficulty_id, 
             sentence_type=0
         )
 
@@ -290,9 +291,7 @@ async def finish_sentence_generation(
         # Разблокируем show_next_sentence()
         # --------------------------------------------------
 
-        event = generation_events.get(
-            user_id
-        )
+        event = generation_events.get(user_id)
 
         if event:
             event.set()
@@ -312,6 +311,8 @@ async def load_sentences_from_db(
     difficulty_id: int,
     count: int
 ):
+    print("## load_sentences_from_db")
+    
     rows = await asyncio.to_thread(
         db.get_unused_sentences,
         user_id,
@@ -338,6 +339,8 @@ async def load_sentences_from_db(
 
 
 def make_progress_bar(current: int, total: int, length: int = 20) -> str:
+    print("## make_progress_bar")
+    
     filled = round(length * current / total)
     empty = length - filled
 
@@ -353,6 +356,8 @@ def make_progress_bar(current: int, total: int, length: int = 20) -> str:
     )
 
 async def show_next_sentence(message: Message, state: FSMContext):
+    print("## show_next_sentence")
+        
     data = await state.get_data()
 
     current_sentence = data.get("current_sentence", 0)
@@ -360,7 +365,6 @@ async def show_next_sentence(message: Message, state: FSMContext):
     sentences = data.get("sentences", {"sentences": []})
     user_id = data["user_id"]
 
-    #await rbf.delete_active_messages(state, type="training_question")
     next_sentence_number = current_sentence + 1
 
     if next_sentence_number > total_sentence:
@@ -464,17 +468,19 @@ async def show_next_sentence(message: Message, state: FSMContext):
 #Обработка ответа пользвоателя
 @router.message(st.MainStates.bliz_answer)
 async def training_answer_handler(message: Message, state: FSMContext):
+    print("## training_answer_handler")
+        
     data = await state.get_data()
     user_id = data["user_id"]
     grammar_topic_id = data["grammar_topic_id"]
-    grammar_topic_name = db.get_grammar_topic_name(grammar_topic_id)
-    grammar_parant_topic_id = db.get_parent_grammar_topic_id(grammar_topic_id)
+    grammar_topic_name = cache.get_grammar_topic_name(grammar_topic_id)
+    grammar_parant_topic_id = cache.get_parent_grammar_topic_id(grammar_topic_id)
     if grammar_parant_topic_id is None:
         grammar_parant_topic_name = ""
     else:
-        grammar_parant_topic_name = db.get_grammar_topic_name(grammar_parant_topic_id) + " --> "
+        grammar_parant_topic_name = cache.get_grammar_topic_name(grammar_parant_topic_id) + " --> "
 
-    grammar_parant_topic_name = db.get_grammar_topic_name(grammar_parant_topic_id) if grammar_parant_topic_id else ""
+    grammar_parant_topic_name = cache.get_grammar_topic_name(grammar_parant_topic_id) if grammar_parant_topic_id else ""
     sentences = data["sentences"]        
     current_sentence = data["current_sentence"]
     total_sentence =data.get("total_sentence") 
@@ -531,6 +537,8 @@ async def training_answer_handler(message: Message, state: FSMContext):
 #Показываем подсказки
 @router.callback_query(st.MainStates.bliz_answer , F.data == "answer_tips")
 async def answer_show_tips_handler(callback: CallbackQuery, state: FSMContext):
+    print("## answer_show_tips_handler")
+        
     await callback.answer()    
     
     data = await state.get_data()
@@ -566,6 +574,8 @@ async def answer_skip_answer_handler(callback: CallbackQuery, state: FSMContext)
 #Обрабатываем событие заввершения
 @router.callback_query(st.MainStates.bliz_answer , F.data == "finish_training")
 async def answer_finish_training_handler(callback: CallbackQuery, state: FSMContext):
+    print("## answer_finish_training_handler")
+        
     await callback.answer()
     data = await state.get_data()
     level_id = data["level_id"]
@@ -576,6 +586,8 @@ async def answer_finish_training_handler(callback: CallbackQuery, state: FSMCont
     
 #Выводим общий итог - комментарий
 async def finish_training(message: Message, state: FSMContext):
+    print("## finish_training")
+        
     data = await state.get_data()
     level_id = data["level_id"]
     sentences = data["sentences"]   
@@ -631,6 +643,8 @@ async def finish_training(message: Message, state: FSMContext):
 
 @router.callback_query(st.MainStates.bliz_answer , F.data == "yes2")
 async def yes2_handler(callback: CallbackQuery, state: FSMContext):
+    print("## yes2_handler")
+        
     await callback.answer()
     fdata = F.data
 
@@ -657,7 +671,8 @@ async def yes2_handler(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("onboard_"))
 async def onboard_pay_handler(callback: CallbackQuery, state: FSMContext):
-    print("onboard_pay_handler")
+    print("## onboard_pay_handler")
+       
     await my_print(state, f"state: {state}")
 
     await callback.answer()
@@ -701,6 +716,8 @@ async def onboard_pay_handler(callback: CallbackQuery, state: FSMContext):
 #Возврат в галвное меню
 @router.callback_query(st.MainStates.bliz_answer , F.data == "training_main_menu")
 async def answer_back_to_main_menu(callback: CallbackQuery, state: FSMContext):
+    print("## answer_back_to_main_menu")
+        
     await my_print(state = state, mes = "answer_back_to_main_menu")
     await callback.answer()
     data = await state.get_data()
@@ -709,7 +726,7 @@ async def answer_back_to_main_menu(callback: CallbackQuery, state: FSMContext):
     active_messages = ["active_messages"]
     await state.set_state(st.MainStates.main_menu)
 
-    cur_mes = await callback.message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(user_id))
+    cur_mes = await callback.message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(user_id,level_id))
 
     await rbf.delete_active_messages(state, type="training_start_mess")
     await rbf.delete_active_messages(state, type = "training_question")
@@ -863,6 +880,8 @@ def save_sentences(
     difficulty_id: int,
     sentence_type: int = 0
 ):
+    print("## save_sentences")
+        
     sentences = sentences_data["sentences"]
 
     for item in sentences:
@@ -887,43 +906,8 @@ def save_sentences(
     return sentences_data
 
 
-async def get_sentences_(
-    user_id: int,
-    level_id: int,
-    difficulty: int,
-    grammar_topic_id: int,
-    lexical_topic_id: int    
-):
 
-
-    generated_sentence = await generate_sentence(
-        level=db.get_level_name(level_id),
-        difficulty=difficulty,
-        group =db.get_group_name(group_id),
-        topic=db.get_topic_name(topic_id),        
-        previous_sentences=previous_sentences
-    )
-
-    
-        
-
-    # 3. Сохраняем его в БД
-    sentence_id = add_sentence(
-        sentence=generated_sentence,
-        level_id=level_id,
-        topic_id=topic_id,
-        sentence_type=0
-    )
-
-    # 4. Возвращаем предложение
-    return {
-        "id": sentence_id,
-        "text": generated_sentence
-    }
-
-
-
-async def get_training_question(message: Message, state: FSMContext, user_id: int):
+async def get_training_question_to_del(message: Message, state: FSMContext, user_id: int):
         
     data = await state.get_data()
     level_id = data["level_id"]

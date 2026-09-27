@@ -21,6 +21,7 @@ from handlers import menu, routes_base_function, training, subscription
 from database import create_tables
 from web import app
 import uvicorn
+import cache
 
 
 load_dotenv()
@@ -33,7 +34,8 @@ print(f"LOCAL_OR_SERVER: {LOCAL_OR_SERVER}")
 
 logging.basicConfig(level=logging.INFO)
 
-
+cache.load_reference_data()
+#print (cache.LEVELS)
 
 
 async def main() -> None:

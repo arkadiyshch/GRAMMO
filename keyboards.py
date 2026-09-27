@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import database as db
+import cache
 
 def diagnostic_level_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -64,9 +65,9 @@ def welcome_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 #Клавиатура главного меню
-async def main_menu_keyboard(user_id):
-   
-    level_id = db.get_current_user_level_id(user_id)
+async def main_menu_keyboard(user_id: int, level_id: int):
+    
+    #level_id = db.get_current_user_level_id(user_id)
     subscription = db.get_user_subscription(user_id)
 
     if subscription is None:
@@ -79,7 +80,8 @@ async def main_menu_keyboard(user_id):
     if level_id is None:
         chengeLevelButtonText="Выберите уровень"
     else:
-        chengeLevelButtonText=f"Уровень: {db.get_level_name(level_id)}"    
+        level_name = cache.LEVELS[level_id]["code"]
+        chengeLevelButtonText=f"Уровень: {level_name}"    
 
     
     buttons = [
@@ -137,11 +139,11 @@ def blitz_groups_keyboard(groups, welcome_mode):
 
 
 #Выбор Меню тренироки 
-def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, user_id: int ):
+def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, user_id: int , difficulty_id:int):
 
-    difficylty_id = db.get_last_difficulty_id_by_user_id(user_id)
-    difficultyu_name = db.get_difficulty_name_by_id(difficylty_id)
+    difficulty_name = cache.DIFFICULTIES[difficulty_id]["name"]
 
+    
     grammar_topic_name = ""
     if grammar_topic_id is None:
         grammar_topic_name = "Любая"
@@ -149,25 +151,23 @@ def trainig_keyboard(level_id: int, grammar_topic_id:int, lexical_topic_id:int, 
         if grammar_topic_id ==0 :
                 grammar_topic_name = "Любая"
         else:
-            grammar_topic_name = db.get_grammar_topic_name(grammar_topic_id)        
-    #print(f"grammar_topic_id: {grammar_topic_id}")
-
-    print(f"lexical_topic_id:{lexical_topic_id}")
-    lexical_topic_name = ""
-    if lexical_topic_id is None:
-        lexical_topic_name = "Любая"
-    else:
-        if lexical_topic_id ==0 :
-                lexical_topic_name = "Любая"
-        else:
-            lexical_topic_name = db.get_lexical_topic_name(lexical_topic_id)        
+            grammar_topic_name = cache.get_grammar_topic_name(grammar_topic_id)        
+    
+    lexical_topic_name = "Лексические темы не используются"
+    #if lexical_topic_id is None:
+    #    lexical_topic_name = "Любая"
+    #else:
+    #    if lexical_topic_id ==0 :
+    #            lexical_topic_name = "Любая"
+    #    else:
+    #        lexical_topic_name = db.get_lexical_topic_name(lexical_topic_id)        
     #print(f"grammar_topic_id: {grammar_topic_id}")
     
     buttons = [
         [InlineKeyboardButton(text="-->> НАЧАТЬ ТРЕНИРОВКУ <<-- ", callback_data="training_start")],
         [InlineKeyboardButton(text=f"Грамматика: {grammar_topic_name}", callback_data="training_grammar_topic")],
      #   [InlineKeyboardButton(text=f"Лексика: {lexical_topic_name}", callback_data="training_lexical_topic")],
-        [InlineKeyboardButton(text=f"Сложность: {difficultyu_name}", callback_data="training_difficulty")],
+        [InlineKeyboardButton(text=f"Сложность: {difficulty_name}", callback_data="training_difficulty")],
         [InlineKeyboardButton(text="Назад", callback_data="training_back_to_main_menu")]      
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -179,13 +179,14 @@ def grammar_topics_keyboard(grammar_topics, show_back_button: bool):
     #buttons = [[InlineKeyboardButton(text="Любая тема", callback_data="grammar_topic_0")]]
     buttons = []
     
-    print("im here")
+  
     # Кнопки групп
     group_buttons = []
 
     for topic_id, topic_name in grammar_topics:
-        topic_level_id = db.get_grammar_topic_level_id(topic_id)
-        topic_level_name = db.get_level_name(topic_level_id)
+        #topic_level_id = db.get_grammar_topic_level_id(topic_id)
+        topic_level_id = cache.GRAMMAR_TOPICS[topic_id]["level_id"]
+        topic_level_name = cache.get_level_name(topic_level_id)
         topic_name_with_level = topic_level_name + " - " + topic_name
         group_buttons.append(InlineKeyboardButton(text=topic_name_with_level, callback_data=f"grammar_topic_id_{topic_id}"))
         #group_buttons.append(InlineKeyboardButton(text="123", callback_data=f"grammar_topic_id_{topic_id}"))

@@ -84,7 +84,7 @@ async def yookassa_webhook(request: Request):
     return {"status": "ok"}
 
 ##################################################################
-print("REGISTERED ROUTES:")
-for route in app.routes:
-    print(route.path, route.methods)
+#print("REGISTERED ROUTES:")
+#for route in app.routes:
+#    print(route.path, route.methods)
 ##################################################################

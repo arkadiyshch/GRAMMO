@@ -176,9 +176,10 @@ async def subscription_back(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
     user_id = data["user_id"]  
+    level_id = data["level_id"]  
 
     await state.set_state(st.MainStates.main_menu)
     rbf.delete_active_messages(state, author="user")
     rbf.delete_active_messages(state, author="bot")
-    await callback.message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(user_id))
+    await callback.message.answer("Главное меню", reply_markup=await kb.main_menu_keyboard(user_id, level_id))
     
